@@ -66,7 +66,7 @@ max_zones = os.path.join(env.workspace, 'max_stop_zones.shp')
 # link the other attributes of this data to the network analyst output
 rs_desc = arcpy.Describe(max_stops)
 f_name = 'Name'
-if f_name not in [field.name for field in rs_desc.fields]:
+if f_name.lower() not in [field.name.lower() for field in rs_desc.fields]:
 	f_type = 'Text'
 	arcpy.AddField_management(max_stops, f_name, f_type)
 
@@ -103,13 +103,36 @@ zone_field_map.outputField = zone_field
 join_field_mappings.addFieldMap(zone_field_map)
 
 # Determine the max zone that each max stop lies within
-max_stop_with_zone = os.path.join(env.workspace, 'temp/max_stop_with_zone.shp')
-arcpy.SpatialJoin_analysis(max_stops, max_zones, max_stop_with_zone, field_mapping=join_field_mappings)
+stops_with_zone = os.path.join(env.workspace, 'temp/max_stops_with_zone.shp')
+arcpy.SpatialJoin_analysis(max_stops, max_zones, stops_with_zone, field_mapping=join_field_mappings)
 
+
+# Each MAX line has a decision to build year associated with it and that information needs to be
+# transferred to the stops.  If a MAX stop serves multiple lines year from the oldest line will be 
+# assigned
+f_name = 'incpt_year'
+f_type = 'Short'
+arcpy.AddField_management(stops_with_zone, f_name, f_type)
+
+fields = ['routes', 'max_zone', 'incpt_year']
+with arcpy.da.UpdateCursor(stops_with_zone, fields) as cursor:
+	for routes, zone, year in cursor:
+		if ':MAX Blue Line:' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
+			year = 1980
+		elif ':MAX Blue Line:' in routes and zone in ('West Suburbs', 'Southwest Portland'):
+			year = 1990
+		elif ':MAX Red Line:' in routes:
+			year = 1997
+		elif ':MAX Yellow Line:' in routes:
+			year = 1999
+		elif any(line in routes for line in (':MAX Green Line:', ':MAX Orange Line:')):
+			year = 2003
+
+		cursor.updateRow((routes, zone, year))
 
 # Create a feature layer so that selections can be made on the data
 max_stop_layer = 'max_stop_layer'
-arcpy.MakeFeatureLayer_management(max_stops, max_stop_layer)
+arcpy.MakeFeatureLayer_management(stops_with_zone, max_stop_layer)
 
 # Select only MAX in the CBD
 select_type = 'New_Selection'
@@ -134,7 +157,6 @@ cbd_max_set.load(cbd_max)
 outer_max_set = arcpy.FeatureSet()
 outer_max_set.load(outer_max)
 
-
 # Create a new feature class to store all of the isochrones that will be created
 all_isocrones = os.path.join(env.workspace, 'rail_stop_isocrones.shp')
 geom_type = 'Polygon'
@@ -144,7 +166,7 @@ arcpy.CreateFeatureclass_management(os.path.dirname(all_isocrones), os.path.base
 
 # Add all fields that are needed in the new feature class, and drop the 'Id' field that is created
 # by default when a new fc w/ no additional fields in created
-field_names = ['origin_fid', 'station', 'type', 'line', 'status', 'walk_dist']
+field_names = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
 	f_type = 'Text'
 	arcpy.AddField_management(all_isocrones, f_name, f_type)
@@ -153,7 +175,7 @@ drop_field = 'Id'
 arcpy.DeleteField_management(all_isocrones, drop_field)
 
 # create an insert cursor to populate the new feature class with the isocrones that will be generated
-i_fields = ['Shape@', 'origin_fid', 'walk_dist']
+i_fields = ['Shape@', 'origin_id', 'walk_dist']
 i_cursor = arcpy.da.InsertCursor(all_isocrones, i_fields) 
 
 # Set static parameters for service area analysis (isocrone generation)
@@ -169,18 +191,18 @@ polygon_simp = '5 Feet'
 
 # This function creates isocrones for the input locations and adds them to a new feature class, each time 
 # function is run the new isocrones are added to the same feature class
-def generateIsocrones(locations, break_value, cur_isocrones):
-	arcpy.na.GenerateServiceAreas(locations, break_value, break_units, osm_network, cur_isocrones,
+def generateIsocrones(locations, break_value, isocrones):
+	arcpy.na.GenerateServiceAreas(locations, break_value, break_units, osm_network, isocrones,
 									Restrictions=permissions, 
 									Exclude_Restricted_Portions_of_the_Network=exclude_restricted,
 									Polygon_Overlap_Type=polygon_overlap, Polygon_Trim_Distance=polygon_trim,
 									Polygon_Simplification_Tolerance=polygon_simp)
 
 	s_fields = ['Shape@', 'Name']
-	with arcpy.da.SearchCursor(cur_isocrones, s_fields) as cursor:
+	with arcpy.da.SearchCursor(isocrones, s_fields) as cursor:
 		for geom, output_name in cursor:
-			origin_fid = re.sub(' : 0 - ' + str(break_value) + '$', '', output_name)
-			i_cursor.insertRow((geom, origin_fid, break_value))
+			origin_id = re.sub(' : 0 - ' + str(break_value) + '$', '', output_name)
+			i_cursor.insertRow((geom, origin_id, break_value))
 
 
 # Set variable parameters specific to each set of isocrones:
@@ -196,25 +218,20 @@ outer_max_distance = 3300
 outer_max_isos = 'in_memory/outer_max_service_area'
 generateIsocrones(outer_max_set, outer_max_distance, outer_max_isos)
 
-# 3 blocks (~800 feet in the area of downtown where the streetcar runs) * 1.25
-streetcar_distance = 1000
-streetcar_isos = 'in_memory/streetcar_service_area'
-generateIsocrones(streetcar_set, streetcar_distance, streetcar_isos)
-
 # after this cursor is deleted the generateIsocrones function will not longer work properly, thus all 
 # calls must be made before this
 del i_cursor
 
 # Get value attributes from the original rail stops data set and add it to the new isocrones
 # feature class, matching corresponding features
-fields = ['OID@', 'STATION', 'STATUS', 'TYPE', 'LINE']
+fields = ['id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
-with arcpy.da.SearchCursor(max_stops, fields) as cursor:
-	for oid, station, status, mode_type, line in cursor:
-		rail_stop_dict[str(oid)] = (str(oid), station, status, mode_type, line)
+with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
+	for origin_id, stop_id, routes, zone, year in cursor:
+		rail_stop_dict[str(int(origin_id))] = (str(int(origin_id)), stop_id, routes, zone, year)
 
 # replace the first entry in fields with rail_stop, the others neccessarily stay the same
-fields = ['origin_fid', 'station', 'status', 'type', 'line']
+fields = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
-	for origin_fid, station, status, mode_type, line in cursor:
-		cursor.updateRow(rail_stop_dict[origin_fid])
+	for origin_id, stop_id, routes, zone, year in cursor:
+		cursor.updateRow(rail_stop_dict[str(origin_id)])
