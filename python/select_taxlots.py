@@ -11,7 +11,8 @@ from arcpy import env
 # Allow shapefiles to be overwritten and set the current workspace
 env.overwriteOutput = True
 env.addOutputsToMap = False
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data'
+# BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2013_12'
 
 # creates a 'temp' to store temporary project output if it doesn't already exist
 if not os.path.exists(os.path.join(env.workspace, 'temp')):

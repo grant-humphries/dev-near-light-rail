@@ -1,3 +1,6 @@
+# Setting for this network attribute:
+# Usage Type: Restriction
+# Restriction Usage: Prohibited
 def footPermissions(foot, access, highway):
 	if foot in ('yes', 'designated', 'permissive'):
 		return False
@@ -19,5 +22,6 @@ walkMinutes(!Shape!)
 # NOTE!!!! Building the network dataset may not work if you set the units for the walk length attribute
 # to minutes, or if you set it at all, this seems to be a bug
 
-# Also the output from PostGIS, QGIS is currently adding leading spaces in front of the attributes
-# values, these must be removed for the functions above to work (use python 'field'.strip() in field calculator)
+# Also the PostGIS streets and trails layer is being saved as a shape file by QGIS is currently adding 
+# leading spaces in front of the attributes values, these must be removed for the functions above to work
+# (use python 'field'.strip() in field calculator)

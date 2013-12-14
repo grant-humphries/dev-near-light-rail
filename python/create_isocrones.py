@@ -14,7 +14,8 @@ arcpy.CheckOutExtension("Network")
 # Allow shapefiles to be overwritten and set the current workspace
 env.overwriteOutput = True
 env.addOutputsToMap = True
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data'
+# BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2013_12'
 
 # Create a temp folder to hold intermediate datasets if it doesn't already exist
 if not os.path.exists(os.path.join(env.workspace, 'temp')):
@@ -24,12 +25,12 @@ if not os.path.exists(os.path.join(env.workspace, 'temp')):
 # orange line is completed, grab the data from maps5 for most up-to-date product and ensure the schema
 # matches what is being called upon in the script.  Also be sure that none of the stops are snapping to the
 # sky bridges in downtown as this has been an issue in the past
-max_stops = os.path.join(env.workspace, 'max_stops/max_stops_2013_12.shp')
+max_stops = os.path.join(env.workspace, 'max_stops_2013_12.shp')
 
 
 # This section can be removed once the orange line stops are added to maps5
 #-----------------------------------------------------------------------------------------------------
-orange_stops = os.path.join(env.workspace, 'max_stops/projected_orange_line_stops.shp')
+orange_stops = os.path.join(env.workspace, 'projected_orange_line_stops.shp')
 
 # there are currently no 6 digit stop id's so I'm starting at 100,000 to ensure these will be unique
 new_stop_id = 100000
@@ -59,7 +60,7 @@ if new_stop_id not in id_list:
 
 
 # These areas will be used to divide the stops into tabulation groups
-max_zones = os.path.join(env.workspace, 'max_stop_zones.shp')
+max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
 # The field 'Name' must be added because only a field of this name will be retained when locations
 # are loaded into service area analysis.  I need to field (unique identifier) that will allow me to 
@@ -180,7 +181,7 @@ i_cursor = arcpy.da.InsertCursor(all_isocrones, i_fields)
 
 # Set static parameters for service area analysis (isocrone generation)
 break_units = 'Feet'
-osm_network = os.path.join(env.workspace, 'osm_foot_10_2013_ND.nd')
+osm_network = os.path.join(env.workspace, 'network_datasets/osm_foot_12_2013_ND.nd')
 permissions = 'foot_permissions'
 exclude_restricted = 'Exclude'
 polygon_overlap = 'Disks'
@@ -228,7 +229,7 @@ fields = ['id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
 	for origin_id, stop_id, routes, zone, year in cursor:
-		rail_stop_dict[str(int(origin_id))] = (str(int(origin_id)), stop_id, routes, zone, year)
+		rail_stop_dict[str(int(origin_id))] = (str(int(origin_id)), stop_id, routes.strip(), zone, year)
 
 # replace the first entry in fields with rail_stop, the others neccessarily stay the same
 fields = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
