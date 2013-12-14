@@ -1,0 +1,16 @@
+Original instructions on how load OSM data into a PostGreSQL database were found here:
+http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/.  I modified this work flow a bit to meet the needs of my project
+
+1. Refresh the OSM data stored here: G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm with the nightly download that is saved here: G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm
+
+2. Create a PostGIS database in postgres and name it 'osmosis_ped'
+
+3. Create the osmosis schema within the newly created database by running the following script that comes with the osmosis download: pgsimple_schema_0.6.sql.  Do this by using the following command:
+psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
+
+4. Run osmosis using the command in 'dev-near-lightrail\osmosis\osmosis_command.sh'
+
+5. Run this script: dev-near-lightrail\osmosis\compose_trails.sql to create a table that has the geometry of the streets and trails desired for the network analysis:
+psql -d osmosis_ped -U postgres -f "G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\github\dev-near-lightrail\osmosis\compose_trails.sql"
+
+6. Connect to the postgres db and save the table created in step 5 as shapefile with an ESPG of 2913
