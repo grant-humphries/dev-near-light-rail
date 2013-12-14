@@ -1,0 +1,8 @@
+1. Right click on the current osm shapefile and select 'New Network Dataset'
+2. Keep the default name
+3. Keep defualt of modeling turns
+4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', this step is very important as routing will not function properly without it!!!
+5. Leave Z-input as none
+6. Create network attributes based on the python functions here: dev-near-lightrail\network_analyst\foot_permissions.py
+7.  Select 'No' for the establishment of driving directions
+8.  Plan a couple of test trips to make sure that routing is working properly particularly that the restrictions are being applied to freeways, etc.
