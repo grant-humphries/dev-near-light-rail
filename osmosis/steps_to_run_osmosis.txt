@@ -6,7 +6,7 @@ http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/. 
 2. Create a PostGIS database in postgres and name it 'osmosis_ped'
 
 3. Create the osmosis schema within the newly created database by running the following script that comes with the osmosis download: pgsimple_schema_0.6.sql.  Do this by using the following command:
-psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
+psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql".  It may also be neccessary to set the password for the postgres user using the command 'set pgpassword=xxx'
 
 4. Run osmosis using the command in 'dev-near-lightrail\osmosis\osmosis_command.sh'
 
