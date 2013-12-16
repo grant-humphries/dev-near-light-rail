@@ -1,0 +1,4 @@
+1. Update MAX stop data, see instructions in the python folder
+2. Update OSM data and generate new network data set, see 'osmosis' folder for tools, instructions
+3. Run 'create_isocrones.py', be sure change the file path for the project workspace to the new folder that will be created as a part of step 1 or older data will be overwritten and the wrong inputs will be used
+4. Run 'select_taxlots.py' again be sure to change file paths to the new project folder
