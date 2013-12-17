@@ -181,7 +181,7 @@ i_cursor = arcpy.da.InsertCursor(all_isocrones, i_fields)
 
 # Set static parameters for service area analysis (isocrone generation)
 break_units = 'Feet'
-osm_network = os.path.join(env.workspace, 'network_datasets/osm_foot_12_2013_ND.nd')
+osm_network = os.path.join(env.workspace, 'osm_foot_2013_12_ND.nd')
 permissions = 'foot_permissions'
 exclude_restricted = 'Exclude'
 polygon_overlap = 'Disks'
@@ -207,10 +207,9 @@ def generateIsocrones(locations, break_value, isocrones):
 
 
 # Set variable parameters specific to each set of isocrones:
-# These first walk shed isocrones that are created will have walk distance of 1650 feet, that a 1/4 which
-# is what was traditionally used plus 25%, that extra twenty five percent is to account for the fact that this
-# new method is more circuitous
-cbd_max_distance = 2475
+# For noew I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
+# am still working with Alan Lehto to finalize this number
+cbd_max_distance = 3300
 cbd_max_isos = 'in_memory/cbd_max_service_area'
 generateIsocrones(cbd_max_set, cbd_max_distance, cbd_max_isos)
 
