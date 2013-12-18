@@ -169,7 +169,13 @@ arcpy.CreateFeatureclass_management(os.path.dirname(all_isocrones), os.path.base
 # by default when a new fc w/ no additional fields in created
 field_names = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
-	f_type = 'Text'
+	if f_name in ('origin_id', 'stop_id', 'incpt_year'):
+		f_type = 'Double'
+	elif f_name in ('routes', 'max_zone'):
+		f_type = 'Text'
+	elif f_name == 'walk_dist':
+		f_type = 'Double'
+	
 	arcpy.AddField_management(all_isocrones, f_name, f_type)
 
 drop_field = 'Id'

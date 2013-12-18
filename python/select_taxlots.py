@@ -10,7 +10,7 @@ from arcpy import env
 
 # Allow shapefiles to be overwritten and set the current workspace
 env.overwriteOutput = True
-env.addOutputsToMap = False
+env.addOutputsToMap = True
 # BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
 env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2013_12'
 
@@ -22,17 +22,53 @@ if not os.path.exists(os.path.join(env.workspace, 'temp')):
 isocrones = os.path.join(env.workspace, 'rail_stop_isocrones.shp')
 taxlots = '//gisstore/gis/RLIS/TAXLOTS/taxlots.shp'
 multi_family = '//gisstore/gis/RLIS/LAND/multifamily_housing_inventory.shp'
-biz_district = os.path.join(env.workspace, 'cent_biz_dist.shp')
+
+# Taxlots will need to be selected based on their location relative to isocrones, the attributes of the
+# isocrones that they fall within, and their own attributes, thus a spatial join will be performed
+# so that all of the pertainent information will be contained within a single dataset
+def mergeTaxlotsIsocrones(tl_data, name, dissolve_fields):
+	taxlot_iso_join = os.path.join(env.workspace, 'temp/' + name + '_iso_join.shp')
+	join_operation = 'Join_One_to_Many'
+	join_type = 'Keep_Common'
+	arcpy.SpatialJoin_analysis(tl_data, isocrones, taxlot_iso_join, join_operation, join_type)
+
+	taxlot_iso_dissolve = os.path.join(env.workspace, 'temp/' + name + '_iso_dissolve.shp')
+	dissolve_fields.append('max_zone')
+	stats_fields = [['incpt_year', 'MIN']]
+	part_type = 'Single_Part'
+	arcpy.Dissolve_management(taxlot_iso_join, taxlot_iso_dissolve, dissolve_fields, stats_fields, 
+								part_type)
+
+	# now remove any taxlots that have yearbuilt date before the inception year of the MAX stop
+	# isocrone that has been joined to it as this construction wasn't influenced by MAX development
+	compare_fields = ['YEARBUILT', 'MIN_incpt_']
+	with arcpy.da.UpdateCursor(taxlot_iso_dissolve, compare_fields) as cursor:
+		for build_year, max_year in cursor:
+			if build_year > max_year
+
+
+	return taxlot_iso_dissolve
+
+# Run function for taxlot data, attributes that are to be retained must be included in the dissolve
+# field list
+tl_name = 'taxlot'
+tl_dissolve_fields = ['TLID', 'SITEADDR', 'SITECITY', 'SITEZIP', 'LANDVAL', 'BLDGVAL', 'TOTALVAL', 
+						'BLDGSQFT', 'YEARBUILT', 'PROP_CODE', 'LANDUSE', 'SALEDATE', 'SALEPRICE', 'COUNTY']
+tl_iso_merge = mergeTaxlotsIsocrones(taxlots, tl_name, tl_dissolve_fields)
+
+# Now run the function for multi-familty housing data
+mf_name = 'multifam'
+mf_dissolve_fields = ['ADDRESS', 'MAIL_CITY', 'UNITS', 'ZIPCODE', 'UNIT_TYPE', 'COUNTY', 'MIXED_USE',
+						 'YEARBUILT', 'COMMONNAME', 'DATASOURCE', 'CONFIDENCE', 'METRO_ID']
+mf_iso_merge = mergeTaxlotsIsocrones(multi_family, mf_name, mf_dissolve_fields)
 
 # Create feature layers so that selections can be made on all of these layers
 taxlot_layer = 'taxlot_layer'
-arcpy.MakeFeatureLayer_management(taxlots, taxlot_layer)
+arcpy.MakeFeatureLayer_management(tl_iso_merge, taxlot_layer)
 multifam_layer = 'multi_family_layer'
-arcpy.MakeFeatureLayer_management(multi_family, multifam_layer)
+arcpy.MakeFeatureLayer_management(mf_iso_merge, multifam_layer)
 isocrones_layer = 'isocrones_layer'
 arcpy.MakeFeatureLayer_management(isocrones, isocrones_layer)
-biz_dist_layer = 'business_district_layer'
-arcpy.MakeFeatureLayer_management(biz_district, biz_dist_layer)
 
 # Create a list that will hold the taxlots stats and add a header to it:
 stats_list = []
@@ -43,20 +79,11 @@ stats_list.append(header_tuple)
 taxlot_select_list = []
 multifam_select_list = []
 
-def selectTaxlots(group_name, line_year, where_clause):
+def selectTaxlots(group_name, where_clause):
 	# Select the group of station areas to be used
 	select_type = 'New_Selection'
-	arcpy.SelectLayerByAttribute_management(isocrones_layer, select_type, where_clause)
-
-	# Select taxlots that are at least partially in the selected isocrones and save them to a shapefile
-	overlap_type = 'Intersect'
-	s_type = 'New_Selection'
-	arcpy.SelectLayerByLocation_management(taxlot_layer, overlap_type, isocrones_layer, selection_type=s_type)
-
-	# The build year on the taxlot must be equal to or later than the MAX line's decision to build year 
-	select_type = 'Subset_Selection'
-	year_wc = ' "YEARBUILT" >= ' + str(line_year)
-	arcpy.SelectLayerByAttribute_management(taxlot_layer, select_type, year_wc)
+	final_wc = """ "YEARBUILT" >= "MIN_incpt_" AND """ + 
+	arcpy.SelectLayerByAttribute_management(taxlot_layer, select_type, where_clause)
 
 	taxlot_select = os.path.join(env.workspace, 'temp/' + group_name + '_tl.shp')
 	arcpy.CopyFeatures_management(taxlot_layer, taxlot_select)
