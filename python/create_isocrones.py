@@ -170,7 +170,7 @@ arcpy.CreateFeatureclass_management(os.path.dirname(all_isocrones), os.path.base
 field_names = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
 	if f_name in ('origin_id', 'stop_id', 'incpt_year'):
-		f_type = 'Double'
+		f_type = 'Long'
 	elif f_name in ('routes', 'max_zone'):
 		f_type = 'Text'
 	elif f_name == 'walk_dist':
@@ -234,10 +234,10 @@ fields = ['id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
 	for origin_id, stop_id, routes, zone, year in cursor:
-		rail_stop_dict[str(int(origin_id))] = (str(int(origin_id)), stop_id, routes.strip(), zone, year)
+		rail_stop_dict[origin_id] = (origin_id, stop_id, routes.strip(), zone, year)
 
 # replace the first entry in fields with rail_stop, the others neccessarily stay the same
 fields = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
 	for origin_id, stop_id, routes, zone, year in cursor:
-		cursor.updateRow(rail_stop_dict[str(origin_id)])
+		cursor.updateRow(rail_stop_dict[origin_id])
