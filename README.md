@@ -12,9 +12,11 @@ Follow the steps below to refresh the data and generate an current version of th
 2. Load the table `current.stop_ext`.
 3. Apply the following definition query to the data in order to filter out all non-MAX stops (but also be sure that this is what is desired for the current iteration of the project, there has been some discussion of adding frequent service bus and the streetcar has been analyzed in the past):
 
+```sql
+SELECT * FROM current.stop_ext WHERE "type" = 5
 ```
-"type" = 5
-```
+
+this query actually must be shorted to `"type" = 5` to be used in QGIS as it only interprets the where clause
 
 4. Create a new sub-folder at the following location: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` the folder should represent the data and be in the following format `YYYY_MM`.
 5. Save the stops data as a shapefile with the projection `2913` in the newly created folder and include the date in the name of the shapefile.
@@ -32,9 +34,9 @@ http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/. 
 psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
 ```
 
-It may also be neccessary to set the password for the postgres user using the command `set pgpassword=xxx`
-4. Run Osmosis using the command in `dev-near-lightrail\osmosis\osmosis_command.sh`
-5. Run the following script: `dev-near-lightrail\osmosis\compose_trails.sql` to create a table that has the geometry of the streets and trails desired for the network analysis, to run this in the command line use the shell snippet below:
+It may also be neccessary to set the password for the postgres user using the command `SET pgpassword=xxx`
+4. Run Osmosis using the command in `osmosis\osmosis_command.sh`
+5. Run the following script: `dev-near-lightrail\osmosis\compose_trails.sql` to create a table that has the geometry of the streets and trails desired for the network analysis, to run this in the command line locally use the shell snippet below:
 
 ```
 psql -d osmosis_ped -U postgres -f "G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\github\dev-near-lightrail\osmosis\compose_trails.sql"
@@ -51,14 +53,14 @@ This step can't be automated at this time AFAIK, but I'll will continue to check
 3. Keep default of modeling turns
 4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', this step is very important as routing will not function properly without it!!!
 5. Leave Z-input as 'None'
-6. Create network attributes based on the python functions here: `dev-near-lightrail\network_analyst\foot_permissions.py`
+6. Create network attributes based on the python functions here: `network_analyst\foot_permissions.py`
 7.  Select 'No' for the establishment of driving directions
 8.  Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
 ## Generate Walk Distance Isocrones
 
-Run `create_isocrones.py`.  Be sure change the file path for the project workspace to the new folder that will be created when the MAX stop data is updated and saved or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.
+Run `network_analyst\create_isocrones.py`.  Be sure change the file path for the project workspace to the new folder that will be created when the MAX stop data is updated and saved or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.
 
 ## Generate Final Stats
 
-Run `select_taxlots.py`.  This script determines which tax lots and multi-family units meet spatial and attribute criteria to be considered a part of growth that was a least in part due to the construction of a MAX line.  Be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.
+Run `arcpy\select_taxlots.py`.  This script determines which tax lots and multi-family units meet spatial and attribute criteria to be considered a part of growth that was a least in part due to the construction of a MAX line.  Be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.
