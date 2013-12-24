@@ -52,7 +52,7 @@ def mergeTaxlotsIsocrones(tl_data, name, dissolve_fields, unique_id, accrual_uni
 	id_list = []
 	global am_label
 	am_label = 'All MAX'
-	zone_dict = {t_label: 0}
+	zone_dict = {am_label: 0}
 	fields = [unique_id, 'max_zone', accrual_unit]
 	with arcpy.da.SearchCursor(taxlot_iso_dissolve, fields) as cursor:
 		for uid, zone, unit in cursor:
