@@ -51,7 +51,7 @@ This step can't be automated at this time AFAIK, but I'll will continue to check
 1. Right click on the current OpenStreetMap shapefile and select 'New Network Dataset'
 2. Use the default name
 3. Keep default of modeling turns
-4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', this step is very important as routing will not function properly without it!!!
+4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
 5. Leave Z-input as 'None'
 6. Create network attributes based on the python functions here: `network_analyst\foot_permissions.py`
 7.  Select 'No' for the establishment of driving directions

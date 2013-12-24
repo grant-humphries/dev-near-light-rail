@@ -62,7 +62,7 @@ def mergeTaxlotsIsocrones(tl_data, name, dissolve_fields, unique_id, accrual_uni
 				zone_dict[zone] += unit
 
 			if uid not in id_list:
-				zone_dict['total'] += unit
+				zone_dict[am_label] += unit
 				id_list.append(uid)
 
 	return zone_dict
