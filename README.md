@@ -59,6 +59,6 @@ This step can't be automated at this time AFAIK, but I'll will continue to check
 
 Run `create_isocrones.py`.  Be sure change the file path for the project workspace to the new folder that will be created when the MAX stop data is updated and saved or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.
 
-## Determine Tax Lots that Meet Spatial and Attribute Criteria and Generate Final Stats
+## Generate Final Stats
 
-Run `select_taxlots.py`.  Again be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.
+Run `select_taxlots.py`.  This script determines which tax lots and multi-family units meet spatial and attribute criteria to be considered a part of growth that was a least in part due to the construction of a MAX line.  Be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.
