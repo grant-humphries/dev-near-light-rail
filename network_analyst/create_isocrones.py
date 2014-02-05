@@ -1,6 +1,6 @@
-# Copyright: (c) Grant Humphries for TriMet, 2013
+# Copyright: (c) Grant Humphries for TriMet, 2013-14
 # ArcGIS Version:   10.2
-# Python Version:   2.7.3
+# Python Version:   2.7.5
 #--------------------------------
 
 import os

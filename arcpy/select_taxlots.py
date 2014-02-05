@@ -114,3 +114,67 @@ with open(os.path.join(env.workspace, 'csv/development_stats.csv'), 'wb') as dev
 	csv_writer = csv.writer(dev_stats)
 	for entry in stats:
 		csv_writer.writerow(entry)
+
+#------------------------------------------------------------------------------------------------
+# The portion of the script below will assign each taxlot in the Portland Metro area a 'yearbuilt'
+# based on which MAX station it is closest to.  This will ultimately be used to create an approximation
+# of growth region wide that can be compared to growth around MAX stations
+
+# Find the nearest MAX stop to each tax lot
+# note that this dataset is created with create_isocrones.py which must be run first
+stops_with_zone = os.path.join(env.workspace, 'temp/max_stops_with_zone.shp')
+taxlot_near_stops = os.path.join(env.workspace, 'temp/tlots_near_max_stops.dbf')
+arcpy.GenerateNearTable_analysis(taxlots, stops_with_zone, taxlot_near_stops)
+
+# create a mapping from the taxlots fid to its nearest stop
+taxlot2stops_dict = {}
+fields = ['IN_FID', 'NEAR_FID']
+with arcpy.da.SearchCursor(taxlot_near_stops, fields) as cursor:
+	for tl_fid, stop_fid in cursor:
+		taxlot2stops_dict[tl_fid] = stop_fid
+
+# create a mapping from the fid for each stop to its inception year
+stop_year_dict = {}
+fields = ['OID@', 'incpt_year']
+with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
+	for oid, inception_year in cursor:
+		stop_year_dict[oid] = inception_year
+
+# update taxlot2stops_dict such that the taxlot's fid maps to the inception year of its nearest MAX stop
+for key, value in taxlot2stops_dict.iteritems():
+	taxlot2stops_dict[key] = stop_year_dict[value]
+
+# Create a new feature class to store a subset of taxlots
+new_development = os.path.join(env.workspace, 'new_dev_taxlots.shp')
+geom_type = 'POLYGON'
+sr = arcpy.SpatialReference(2913)
+arcpy.CreateFeatureclass_management(os.path.dirname(new_development), os.path.basename(new_development), 
+										geom_type, spatial_reference=sr)
+
+new_fields = [('TLID', 'TEXT'), ('TOTALVAL', 'LONG'), ('YEARBUILT', 'SHORT'), ('MAX_YEAR', 'SHORT')]
+for f_name, f_type in new_fields:
+	arcpy.AddField_management(new_development, f_name, f_type)
+
+drop_field = 'Id'
+arcpy.DeleteField_management(new_development, drop_field)
+
+# For all taxlots that have development more recently than their nearest MAX stop was built, add them to the
+# newly created feature class
+fields = ['SHAPE@'] + [f_name for f_name, f_type in new_fields]
+i_cursor = arcpy.da.InsertCursor(new_development, fields)
+
+fields = ['SHAPE@', 'OID@', 'TLID', 'TOTALVAL', 'YEARBUILT']
+with arcpy.da.SearchCursor(taxlots, fields) as cursor:
+	for geom, oid, tlid, value, year_built in cursor:
+		if year_built >= taxlot2stops_dict[oid]:
+			i_cursor.insertRow((geom, tlid, value, year_built, taxlot2stops_dict[oid]))
+
+del i_cursor
+
+more_fields = ['TM_DIST', 'UGB', 'NEAR_MAX', 'BIG_9']
+f_type = 'TEXT'
+for f_name in more_fields:
+	arcpy.AddField_management(new_development, f_name, f_type)
+
+
+
