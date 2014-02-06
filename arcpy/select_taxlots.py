@@ -4,6 +4,7 @@
 #--------------------------------
 
 import os
+import re
 import csv
 import arcpy
 from arcpy import env
@@ -171,10 +172,30 @@ with arcpy.da.SearchCursor(taxlots, fields) as cursor:
 
 del i_cursor
 
+# Add fields that indicate whether or not each taxlot is in the TM District, the Urban Growth Boundary
 more_fields = ['TM_DIST', 'UGB', 'NEAR_MAX', 'BIG_9']
 f_type = 'TEXT'
 for f_name in more_fields:
 	arcpy.AddField_management(new_development, f_name, f_type)
 
+ugb = '//gisstore/gis/Rlis/BOUNDARY/ugb.shp'
+tm_district = '//gisstore/gis/TRIMET/tm_fill.shp'
+cities = '//gisstore/gis/Rlis/BOUNDARY/cty_fill.shp'
 
+big_9_cities = ['Portland', 'Gresham', 'Hillsboro', 'Beaverton', 'Tualatin', 'Tigard', 'Lake Oswego', 
+				'Oregon City', 'West Linn']
+city_geom_array = arcpy.Array()
+fields = ['SHAPE@', 'CITYNAME']
+with arcpy.da.SearchCursor(cities, fields) as cursor:
+	for geom, name in cursor:
+		current_name = ''
+		if name in big_9_cities:
+			# using regular expression to grab the part of the WKT string that is within triple
+			# parenthesis and return it
+			pt_string = re.search(r"\(\(\(([\S\s]+)\)\)\)", geom.WKT).group(1)
+			poly_array = arcpy.Array([arcpy.Point(float(x), float(y)) for x, y in 
+										[coords.split() for coords in pt_string.split(',')]])
+			city_geom_array.append(poly_array)
+
+arcpy.Polygon(city_geom_array)
 
