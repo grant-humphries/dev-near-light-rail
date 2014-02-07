@@ -172,30 +172,71 @@ with arcpy.da.SearchCursor(taxlots, fields) as cursor:
 
 del i_cursor
 
+
+# Add datasets for next phase of project which is determing taxlots position to critical regional boundaries
+ugb = '//gisstore/gis/Rlis/BOUNDARY/ugb.shp'
+tm_district = '//gisstore/gis/TRIMET/tm_fill.shp'
+cities = '//gisstore/gis/Rlis/BOUNDARY/cty_fill.shp'
+max_tls = os.path.join(env.workspace, 'temp/taxlot_iso_dissolve.shp')
+max_mfs = os.path.join(env.workspace, 'temp/multifam_iso_dissolve.shp')
+
+# Get the geometry object for each of the cities that are to be compared against the taxlots
+def getBoundaryGeom(fc):
+	fields = ['OID@', 'SHAPE@']
+	with arcpy.da.SearchCursor(fc, fields) as cursor:
+		for oid, geom in cursor:
+			return geom
+
+ugb_geom = getBoundaryGeom(ugb)
+tm_dist_geom = getBoundaryGeom(tm_district)
+
+# I'm only interested in the 9 most populuous cities in the TM district in the case, so I need to isolate them
+# and combine them into a single geometry
+nine_city_geom = None
+fields = ['SHAPE@', 'CITYNAME']
+big_9_cities = ['Portland', 'Gresham', 'Hillsboro', 'Beaverton', 'Tualatin', 
+					'Tigard', 'Lake Oswego', 'Oregon City', 'West Linn']
+with arcpy.da.SearchCursor(cities, fields) as cursor:
+	for geom, name in cursor:
+		if name in big_9_cities:
+			if nine_city_geom == None:
+				nine_city_geom = geom
+			else:
+				nine_city_geom = nine_city_geom.union(geom)
+
+# Now create a single geometry for all of the taxlots near MAX stops
+max_tl_geom = None
+fields = ['SHAPE@', "OID@"]
+with arcpy.da.SearchCursor(max_tls, fields) as cursor:
+	for geom, oid in cursor:
+		if max_tl_geom == None:
+			max_tl_geom = geom
+		else:
+			max_tl_geom = max_tl_geom.union(geom)
+
+
 # Add fields that indicate whether or not each taxlot is in the TM District, the Urban Growth Boundary
-more_fields = ['TM_DIST', 'UGB', 'NEAR_MAX', 'BIG_9']
+more_fields = ['TM_DIST', 'UGB', 'BIG_9', 'NEAR_MAX']
 f_type = 'TEXT'
 for f_name in more_fields:
 	arcpy.AddField_management(new_development, f_name, f_type)
 
-ugb = '//gisstore/gis/Rlis/BOUNDARY/ugb.shp'
-tm_district = '//gisstore/gis/TRIMET/tm_fill.shp'
-cities = '//gisstore/gis/Rlis/BOUNDARY/cty_fill.shp'
+more_fields.insert(0, 'SHAPE@')
+with arcpy.da.UpdateCursor(new_development, fields) as cursor:
+	for geom, tm, ugb, big_9, near_max, in cursor:
+		if geom.overlaps(tm_dist_geom) == True:
+			tm = 'yes'
+		else:
+			tm = 'no'
 
-big_9_cities = ['Portland', 'Gresham', 'Hillsboro', 'Beaverton', 'Tualatin', 'Tigard', 'Lake Oswego', 
-				'Oregon City', 'West Linn']
-city_geom_array = arcpy.Array()
-fields = ['SHAPE@', 'CITYNAME']
-with arcpy.da.SearchCursor(cities, fields) as cursor:
-	for geom, name in cursor:
-		current_name = ''
-		if name in big_9_cities:
-			# using regular expression to grab the part of the WKT string that is within triple
-			# parenthesis and return it
-			pt_string = re.search(r"\(\(\(([\S\s]+)\)\)\)", geom.WKT).group(1)
-			poly_array = arcpy.Array([arcpy.Point(float(x), float(y)) for x, y in 
-										[coords.split() for coords in pt_string.split(',')]])
-			city_geom_array.append(poly_array)
+		if geom.overlaps(ugb_geom) == True:
+			ugb = 'yes'
+		else:
+			ugb = 'no'
 
-arcpy.Polygon(city_geom_array)
+		if geom.overlaps(nine_city_geom) == True:
+			big_9 = 'yes'
+		else:
+			big_9 = 'no'
 
+		cursor.updateRow((geom, tm, ugb, big_9, near_max))
