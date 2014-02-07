@@ -204,16 +204,18 @@ with arcpy.da.SearchCursor(cities, fields) as cursor:
 			else:
 				nine_city_geom = nine_city_geom.union(geom)
 
-# Now create a single geometry for all of the taxlots near MAX stops
-max_tl_geom = None
-fields = ['SHAPE@', "OID@"]
-with arcpy.da.SearchCursor(max_tls, fields) as cursor:
-	for geom, oid in cursor:
-		if max_tl_geom == None:
-			max_tl_geom = geom
-		else:
-			max_tl_geom = max_tl_geom.union(geom)
+# Create a single geometry for all of the taxlots near MAX stops
+max_tl_lyr = 'max_taxlot_layer'
+arcpy.MakeFeatureLayer_management(max_tls, max_tl_lyr)
 
+max_tl_dissolve = os.path.join(env.workspace, 'temp/max_taxlot_dissolve.shp')
+arcpy.Dissolve_management(max_tl_lyr, max_tl_dissolve)
+
+max_tl_geom = None
+fields = ['SHAPE@', 'OID@']
+with arcpy.da.SearchCursor(max_tl_dissolve, fields) as cursor:
+	for geom, oid in cursor:
+		max_tl_geom = geom
 
 # Add fields that indicate whether or not each taxlot is in the TM District, the Urban Growth Boundary
 more_fields = ['TM_DIST', 'UGB', 'BIG_9', 'NEAR_MAX']
@@ -238,5 +240,10 @@ with arcpy.da.UpdateCursor(new_development, fields) as cursor:
 			big_9 = 'yes'
 		else:
 			big_9 = 'no'
+
+		if geom.within(max_tl_geom) == True:
+			near_max = 'yes'
+		else:
+			near_max = 'no'
 
 		cursor.updateRow((geom, tm, ugb, big_9, near_max))
