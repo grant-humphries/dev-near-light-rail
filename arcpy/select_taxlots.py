@@ -41,7 +41,7 @@ def joinIsocronesToProp(prop_data, name, dissolve_fields, unique_id, accrual_uni
 								part_type)
 
 	# Remove any properties that have yearbuilt date before the inception year of the MAX stop
-	# isocrone that has been joined to it as (under the terms of this analysis )this construction wasn't
+	# isocrone that has been joined to it as (under the terms of this analysis) this construction wasn't
 	# influenced by MAX development
 	compare_fields = ['YEARBUILT', 'MIN_incpt_']
 	with arcpy.da.UpdateCursor(prop_iso_dissolve, compare_fields) as cursor:
@@ -78,7 +78,7 @@ tl_dissolve_fields = ['TLID', 'SITEADDR', 'SITECITY', 'SITEZIP', 'LANDVAL', 'BLD
 tl_id = 'TLID'
 tl_unit = 'TOTALVAL'
 tl_stats = joinIsocronesToProp(taxlots, tl_name, tl_dissolve_fields, tl_id, tl_unit)
-max_tl = os.path.join(env.workspace, 'temp/prop_iso_dissolve.shp')
+max_tl = os.path.join(env.workspace, 'temp/taxlot_iso_dissolve.shp')
 
 
 # Run the function for multi-familty housing data
@@ -155,7 +155,7 @@ with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
 
 def createRegionalPropComparison(prop_data, prop_type, prop_fields, max_prop):
 	# Find the nearest MAX stop to each tax lot
-	prop_near_stops_table = os.path.join(env.workspace, 'temp/' + prop_type + '_near_max_stops.dbf')
+	prop_near_stops_table = 'temp/' + prop_type + '_near_max_stops_tbl'
 	arcpy.GenerateNearTable_analysis(prop_data, stops_with_zone, prop_near_stops_table)
 
 	# Create a mapping from the taxlots fid to its nearest stop
@@ -212,6 +212,7 @@ def createRegionalPropComparison(prop_data, prop_type, prop_fields, max_prop):
 	point_loc = 'INSIDE'
 	arcpy.FeatureToPoint_management(new_development, new_dev_pt, point_loc)
 
+	global poly2point_dict
 	poly2point_dict = {}
 	fields = ['OID@', 'ORIG_FID']
 	with arcpy.da.SearchCursor(new_dev_pt, fields) as cursor:
@@ -219,26 +220,30 @@ def createRegionalPropComparison(prop_data, prop_type, prop_fields, max_prop):
 			poly2point_dict[orig_oid] = oid
 
 	ugb_name = prop_type + '_ugb'
-	compareToBoundary(new_dev_pt, ugb, ugb_name)
+	ugb_out_field = 'UGB'
+	compareToBoundary(new_development ,new_dev_pt, ugb, ugb_name, ugb_out_field)
 
 	tm_dist_name = prop_type + '_tm_dist'
-	compareToBoundary(new_dev_pt, tm_district, tm_dist_name)
+	tm_dist_out_field = 'TM_DIST'
+	compareToBoundary(new_development, new_dev_pt, tm_district, tm_dist_name, tm_dist_out_field)
 
 	nine_cities_name = prop_type + '_9_cities'
-	compareToBoundary(new_dev_pt, nine_cities, nine_cities_name)
+	nine_cities_out_field = 'NINE_CITY'
+	compareToBoundary(new_development, new_dev_pt, nine_cities, nine_cities_name, nine_cities_out_field)
 
 	max_prop_name = prop_type + '_near_max'
-	compareToBoundary(new_dev_pt, max_prop, max_prop_name)
+	max_prop_out_field = 'NEAR_MAX'
+	compareToBoundary(new_development, new_dev_pt, max_prop, max_prop_name, max_prop_out_field)
 
 	return new_development
 
 
 # Note that this function can (and should) only be called inside the createRegionalPropComparison function
 # due to teh reference to the poly2point_dict
-def compareToBoundary(target_feats, target_pts_fc, compare_feats, compare_name):
+def compareToBoundary(target_feats, target_pts_fc, compare_feats, compare_name, output_field):
 	# Keep in mind that if a target feature is further from all near features than the search radius (which is
 	# very small in this case, it will not have any entry in the near table)
-	compare_table = os.path.join(env.workspace, 'temp/' + compare_name + '_compare_table.dbf')
+	compare_table = 'in_memory/' + compare_name + '_compare_table'
 	search_radius = '1 FEET'
 	arcpy.GenerateNearTable_analysis(target_pts_fc, compare_feats, compare_table, search_radius)
 
@@ -250,9 +255,9 @@ def compareToBoundary(target_feats, target_pts_fc, compare_feats, compare_name):
 				compare_dict[target_fid] = 'yes'
 
 	f_type = 'TEXT'
-	arcpy.AddField_management(target_feats, compare_name, f_type)
+	arcpy.AddField_management(target_feats, output_field, f_type)
 
-	fields = ['OID@', compare_name]
+	fields = ['OID@', output_field]
 	with arcpy.da.UpdateCursor(target_feats, fields) as cursor:
 		for oid, compare_output in cursor:
 			try:
