@@ -42,11 +42,7 @@ CREATE TABLE comparison_taxlots WITH OIDS AS
 			FROM tm_district) AS tm_dist,
 		--Returns True if a taxlot intersects one of the nine most populous cities in the TM dist
 		(SELECT ST_INTERSECTS(geom, tl.geom)
-			FROM nine_cities) AS nine_cities/*,
-		(CASE 
-			WHEN tl.gid IN (SELECT gid FROM taxlots_in_isocrones) THEN 'yes'
-			ELSE 'no'
-		END) AS near_max*/
+			FROM nine_cities) AS nine_cities
 	FROM taxlot tl;
 
 --Temp table is no longer needed
@@ -60,7 +56,9 @@ CREATE INDEX tl_compare_gid_ix ON comparison_taxlots USING BTREE (gid);
 --Add and populate an attribute indicating whether taxlots from taxlots_in_isocrones are in 
 --are in comparison_taxlots
 ALTER TABLE comparison_taxlots DROP COLUMN IF EXISTS near_max CASCADE;
-ALTER TABLE comparison_taxlots ADD near_max text SET DEFAULT 'no';
+ALTER TABLE comparison_taxlots ADD near_max text DEFAULT 'no';
 
 UPDATE comparison_taxlots ct SET near_max = 'yes'
 	WHERE ct.gid IN (SELECT ti.gid FROM taxlots_in_isocrones ti);
+
+--Ran in 371,986 ms (~6 minutes) on 2/11
