@@ -9,6 +9,8 @@ CREATE TABLE taxlots_in_isocrones WITH OIDS AS
 	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.prop_code, tl.landuse, iso.max_zone, 
 		iso.incpt_year, iso.walk_dist;
 
+--A comparison will be done later on the gid from this table and gid in comparison_taxlots.
+--This index will speed that computation
 DROP INDEX IF EXISTS tl_in_isos_gid_ix CASCADE;
 CREATE INDEX tl_in_isos_gid_ix ON taxlots_in_isocrones USING BTREE (gid);
 
@@ -40,11 +42,25 @@ CREATE TABLE comparison_taxlots WITH OIDS AS
 			FROM tm_district) AS tm_dist,
 		--Returns True if a taxlot intersects one of the nine most populous cities in the TM dist
 		(SELECT ST_INTERSECTS(geom, tl.geom)
-			FROM nine_cities) AS nine_cities,
+			FROM nine_cities) AS nine_cities/*,
 		(CASE 
 			WHEN tl.gid IN (SELECT gid FROM taxlots_in_isocrones) THEN 'yes'
 			ELSE 'no'
-		END) AS near_max
+		END) AS near_max*/
 	FROM taxlot tl;
 
+--Temp table is no longer needed
 DROP TABLE nine_cities CASCADE;
+
+--A comparison will be done later on the gid from this table and gid in taxlots_in_iscrones.
+--This index will speed that computation
+DROP INDEX IF EXISTS tl_compare_gid_ix CASCADE;
+CREATE INDEX tl_compare_gid_ix ON comparison_taxlots USING BTREE (gid);
+
+--Add and populate an attribute indicating whether taxlots from taxlots_in_isocrones are in 
+--are in comparison_taxlots
+ALTER TABLE comparison_taxlots DROP COLUMN IF EXISTS near_max CASCADE;
+ALTER TABLE comparison_taxlots ADD near_max text SET DEFAULT 'no';
+
+UPDATE comparison_taxlots ct SET near_max = 'yes'
+	WHERE ct.gid IN (SELECT ti.gid FROM taxlots_in_isocrones ti);
