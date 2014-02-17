@@ -241,3 +241,9 @@ fields = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
 	for origin_id, stop_id, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[origin_id])
+
+print 'Isocrones created'
+#-----------------------------------------------------------------------------------------------------
+print ''
+print 'Beginning trimming of property data'
+

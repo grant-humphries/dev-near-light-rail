@@ -30,12 +30,12 @@ CREATE TEMP TABLE nine_cities AS
  			'Tualatin', 'Tigard', 'Lake Oswego', 'Oregon City', 'West Linn')) AS collapsable_city
 	GROUP BY collapser;
 
---Derived from (http://gis.stackexchange.com/questions/52792/calculate-min-distance-between-points-in-postgis)
 DROP TABLE IF EXISTS comparison_taxlots CASCADE;
 CREATE TABLE comparison_taxlots WITH OIDS AS
 	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.prop_code, tl.landuse, 
 		--Finds nearest neighbor in the max stops data set for each taxlot and returns the stop's 
 		--corresponding 'MAX Zone'
+		--Derived from (http://gis.stackexchange.com/questions/52792/calculate-min-distance-between-points-in-postgis)
 		(SELECT mxs.max_zone 
 			FROM max_stops mxs 
 			ORDER BY tl.geom <-> mxs.geom 
@@ -65,7 +65,7 @@ UPDATE comparison_taxlots ct SET near_max = 'yes'
 	WHERE ct.gid IN (SELECT ti.gid FROM taxlots_in_isocrones ti);
 
 -----------------------------------------------------------------------------------------------------------------
---Now do the same for Multi-Family Housing Units
+--Do the same for Multi-Family Housing Units
 
 DROP TABLE IF EXISTS multifam_in_isocrones CASCADE;
 CREATE TABLE multifam_in_isocrones WITH OIDS AS
@@ -80,6 +80,9 @@ CREATE TABLE multifam_in_isocrones WITH OIDS AS
 DROP INDEX IF EXISTS mf_in_isos_gid_ix CASCADE;
 CREATE INDEX mf_in_isos_gid_ix ON multifam_in_isocrones USING BTREE (gid);
 
+--Divisors for overall area comparisons will still come from comparison_taxlots, but numerators
+--will come from the table below.  This because the multi-family layer doesn't have full coverage
+--of all buildable land in the region the way the taxlot data does
 DROP TABLE IF EXISTS comparison_multifam CASCADE;
 CREATE TABLE comparison_multifam WITH OIDS AS
 	SELECT mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type, mf.mixed_use, 
@@ -106,3 +109,5 @@ ALTER TABLE comparison_multifam ADD near_max text DEFAULT 'no';
 
 UPDATE comparison_multifam cmf SET near_max = 'yes'
 	WHERE cmf.gid IN (SELECT mfi.gid FROM multifam_in_isocrones mfi);
+
+--ran in 405,524 ms (~6.75 minutes) on 2/14/14
