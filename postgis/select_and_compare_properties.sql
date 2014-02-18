@@ -7,8 +7,9 @@ ALTER TABLE taxlot DROP COLUMN IF EXISTS habitable_acres CASCADE;
 ALTER TABLE taxlot ADD habitable_acres numeric;
 
 --Since this data set is in the State Plane projection the output of the ST_Area tool will be in 
---square feet, I want acres and thus will divide that number by 43,560
-UPDATE taxlot SET habitable_acres = (ST_Area(geom) / 43560)
+--square feet, I want acres and thus will divide that number by 43,560 as that's how many square 
+--feet are in an acre
+UPDATE taxlot SET habitable_acres = (ST_Area(geom) / 43560);
 
 --Spatially join taxlots and the isocrones that were created by based places that can be reached
 --within a given walking distance from MAX stops.  The output is taxlots joined to attribute information
@@ -42,7 +43,7 @@ CREATE TEMP TABLE nine_cities AS
 
 DROP TABLE IF EXISTS comparison_taxlots CASCADE;
 CREATE TABLE comparison_taxlots WITH OIDS AS
-	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.habitable_acres as acres, 
+	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.habitable_acres, 
 		tl.prop_code, tl.landuse, 
 		--Finds nearest neighbor in the max stops data set for each taxlot and returns the stop's 
 		--corresponding 'MAX Zone'
@@ -98,11 +99,10 @@ UPDATE comparison_taxlots ct SET max_year = (
 ALTER TABLE multi_family DROP COLUMN IF EXISTS habitable_acres CASCADE;
 ALTER TABLE multi_family ADD habitable_acres numeric;
 
-UPDATE multi_family SET habitable_acres = (ST_Area(geom) / 43560)
+UPDATE multi_family SET habitable_acres = (ST_Area(geom) / 43560);
 
 DROP TABLE IF EXISTS max_multifam CASCADE;
 CREATE TABLE max_multifam WITH OIDS AS
-	--43,560 square feet in an acre
 	SELECT mf.gid, mf.geom, mf.metro_id, mf.units, mf.unit_type, mf.habitable_acres, mf.mixed_use,
 		iso.max_zone, iso.walk_dist, mf.yearbuilt, min(iso.incpt_year) AS max_year
 	FROM multi_family mf
@@ -156,3 +156,5 @@ UPDATE comparison_multifam cmf SET max_year = (
 	FROM max_stops ms
 	WHERE ms.max_zone = cmf.max_zone
 	LIMIT 1);
+
+--ran in 702,524 ms on 2/18/14 (definitely benefitted from some caching though)
