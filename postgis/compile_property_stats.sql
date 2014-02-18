@@ -5,10 +5,10 @@
 DROP TABLE IF EXISTS grouped_max_tls CASCADE;
 CREATE TEMP TABLE grouped_max_tls AS
 	SELECT mt1.max_zone, mt1.max_year, mt1.walk_dist, sum(mt1.totalval) AS totalval,
-		(SELECT	sum(mt2.acres)
+		(SELECT	sum(mt2.habitables_acres)
 			FROM max_taxlots mt2
 			WHERE mt2.max_zone = mt1.max_zone
-			GROUP BY mt2.max_zone) AS acres
+			GROUP BY mt2.max_zone) AS habitables_acres
 	FROM max_taxlots mt1
 	WHERE yearbuilt >= max_year
 	GROUP BY mt1.max_zone, mt1.max_year, mt1.walk_dist;
@@ -17,15 +17,15 @@ CREATE TEMP TABLE grouped_max_tls AS
 --that have different 'max zone' associations
 DROP TABLE IF EXISTS tls_no_dupes CASCADE;
 CREATE TEMP TABLE tls_no_dupes AS
-	SELECT geom, totalval, yearbuilt, max_year, acres, 1 AS collapser
+	SELECT geom, totalval, yearbuilt, max_year, habitable_habitables_acres, 1 AS collapser
 		FROM max_taxlots
-		GROUP BY gid, geom, totalval, yearbuilt, max_year, acres;
+		GROUP BY gid, geom, totalval, yearbuilt, max_year, habitables_acres;
 
 --Add an entry that sums the total value of new construction taxlots and total area of all taxlots near
 --MAX to the table
 INSERT INTO grouped_max_tls
 	SELECT 'All Zones', NULL, NULL, sum(totalval), 
-		(SELECT sum(acres)
+		(SELECT sum(habitables_habitables_acres)
 			FROM tls_no_dupes
 			GROUP BY collapser)
 	FROM tls_no_dupes
@@ -42,11 +42,11 @@ DROP TABLE tls_no_dupes CASCADE;
 DROP TABLE IF EXISTS grouped_tls CASCADE;
 CREATE TEMP TABLE grouped_tls AS
 	SELECT 'TM District'::text AS bounds, ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum(ct2.acres)
+		(SELECT sum(ct2.habitables_habitables_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND tm_dist = TRUE
-			GROUP BY ct2.max_zone) AS acres
+			GROUP BY ct2.max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND tm_dist = TRUE
@@ -55,11 +55,11 @@ CREATE TEMP TABLE grouped_tls AS
 --UGB
 INSERT INTO grouped_tls
 	SELECT 'UGB', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum (ct2.acres)
+		(SELECT sum (ct2.habitables_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND ugb = TRUE
-			GROUP BY max_zone) AS acres
+			GROUP BY max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND ugb = TRUE
@@ -68,11 +68,11 @@ INSERT INTO grouped_tls
 --Taxlots with the 9 most populous cities in the TriMet districy
 INSERT INTO grouped_tls
 	SELECT 'Nine Most Populous Cities', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum (ct2.acres) 
+		(SELECT sum (ct2.habitables_acres) 
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND nine_cities = TRUE
-			GROUP BY max_zone) AS acres
+			GROUP BY max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND nine_cities = TRUE
@@ -81,12 +81,12 @@ INSERT INTO grouped_tls
 --Within the TriMet District, but doesn't not include taxlots that are within walking distance of MAX
 INSERT INTO grouped_tls
 	SELECT 'TM District not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum (ct2.acres)
+		(SELECT sum (ct2.habitables_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND tm_dist = TRUE
 				AND near_max = 'no'
-			GROUP BY max_zone) AS acres
+			GROUP BY max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND tm_dist = TRUE
@@ -96,12 +96,12 @@ INSERT INTO grouped_tls
 --UGB not near MAX
 INSERT INTO grouped_tls
 	SELECT 'UGB not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum (ct2.acres)
+		(SELECT sum (ct2.habitables_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND ugb = TRUE
 				AND near_max = 'no'
-			GROUP BY max_zone) AS acres
+			GROUP BY max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND ugb = TRUE
@@ -111,12 +111,12 @@ INSERT INTO grouped_tls
 --9 Cities not near MAX
 INSERT INTO grouped_tls
 	SELECT 'Nine Cities not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
-		(SELECT sum (ct2.acres)
+		(SELECT sum (ct2.habitables_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
 				AND nine_cities = TRUE
 				AND near_max = 'no'
-			GROUP BY max_zone) AS acres
+			GROUP BY max_zone) AS habitables_acres
 	FROM comparison_taxlots ct1
 	WHERE yearbuilt >= max_year
 		AND nine_cities = TRUE
@@ -208,28 +208,29 @@ CREATE TABLE property_stats (
 	normalized_value numeric, --dollars of development per acre
 	housing_units int,
 	normalized_h_units numeric, --housing units per acre
-	acres numeric)
+	habitables_acres numeric)
 WITH OIDS;
 
 INSERT INTO property_stats
 	SELECT 'Properties Near MAX', gmt.max_zone, gmt.max_year, gmt.walk_dist, gmt.totalval,
-		(gmt.totalval / gmt.acres), gmm.units, (gmm.units / gmt.acres), gmt.acres
+		(gmt.totalval / gmt.habitables_acres), gmm.units, (gmm.units / gmt.habitables_acres), gmt.habitables_acres
 	FROM grouped_max_tls gmt, grouped_max_mf gmm
 	WHERE gmt.max_zone = gmm.max_zone;
 
 INSERT INTO property_stats
-	SELECT gt.bounds, gt.max_zone, gt.max_year, NULL, gt.totalval, (gt.totalval / gt.acres),
-		gm.units, (gm.units / gt.acres), gt.acres
+	SELECT gt.bounds, gt.max_zone, gt.max_year, NULL, gt.totalval, (gt.totalval / gt.habitables_acres),
+		gm.units, (gm.units / gt.habitables_acres), gt.habitables_acres
 	FROM grouped_tls gt, grouped_mf gm
 	WHERE gt.max_zone = gm.max_zone
 		AND gt.bounds = gm.bounds;
 
---Temp tables no longer needec
+--Temp tables no longer needed
 DROP TABLE grouped_max_tls, grouped_tls, grouped_max_mf, grouped_mf CASCADE;
 
+--Sum all of the 'MAX Zone' groups for the various bounding extents being used
 INSERT INTO property_stats
-	SELECT group_desc, 'All Zones', NULL, NULL, sum(totalval), (sum(totalval) / sum(acres)), 
-	sum(housing_units), (sum(housing_units) / sum(acres)), sum(acres) 
+	SELECT group_desc, 'All Zones', NULL, NULL, sum(totalval), (sum(totalval) / sum(habitables_acres)), 
+	sum(housing_units), (sum(housing_units) / sum(habitables_acres)), sum(habitables_acres) 
 	FROM property_stats
 	--The properties near max should not be summed this way because there would be double counting
 	--they've alreacy been summed properly and inserted to the table

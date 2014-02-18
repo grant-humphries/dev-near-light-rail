@@ -1,18 +1,28 @@
 --Taxlots
 
+--Since parks and water bodies have been 'erased' for taxlots in previous steps the attribute that
+--ships with RLIS and contains the area of the feature is no longer valid and the area will be
+--recalculated below
+ALTER TABLE taxlot DROP COLUMN IF EXISTS habitable_acres CASCADE;
+ALTER TABLE taxlot ADD habitable_acres numeric;
+
+--Since this data set is in the State Plane projection the output of the ST_Area tool will be in 
+--square feet, I want acres and thus will divide that number by 43,560
+UPDATE taxlot SET habitable_acres = (ST_Area(geom) / 43560)
+
 --Spatially join taxlots and the isocrones that were created by based places that can be reached
 --within a given walking distance from MAX stops.  The output is taxlots joined to attribute information
 --of the isocrones that they intersect.  Note that there are intentionally duplicates in this table if 
 --a taxlot is within walking distance multiple stops that are in different 'MAX Zones'
 DROP TABLE IF EXISTS max_taxlots CASCADE;
 CREATE TABLE max_taxlots WITH OIDS AS
-	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.gis_acres as acres, tl.prop_code, tl.landuse, 
+	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse, 
 		iso.max_zone, iso.walk_dist, tl.yearbuilt, min(incpt_year) AS max_year
 	FROM taxlot tl
 		JOIN isocrones iso
 		--This command joins two features only if they intersect
 		ON ST_Intersects(tl.geom, iso.geom)
-	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.gis_acres, tl.prop_code, 
+	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.habitable_acres, tl.prop_code, 
 		tl.landuse, iso.max_zone, iso.walk_dist;
 
 --A comparison will be done later on the gid from this table and gid in comparison_taxlots.
@@ -32,7 +42,7 @@ CREATE TEMP TABLE nine_cities AS
 
 DROP TABLE IF EXISTS comparison_taxlots CASCADE;
 CREATE TABLE comparison_taxlots WITH OIDS AS
-	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.gis_acres as acres, 
+	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.habitable_acres as acres, 
 		tl.prop_code, tl.landuse, 
 		--Finds nearest neighbor in the max stops data set for each taxlot and returns the stop's 
 		--corresponding 'MAX Zone'
@@ -85,16 +95,21 @@ UPDATE comparison_taxlots ct SET max_year = (
 -----------------------------------------------------------------------------------------------------------------
 --Do the same for Multi-Family Housing Units
 
+ALTER TABLE multi_family DROP COLUMN IF EXISTS habitable_acres CASCADE;
+ALTER TABLE multi_family ADD habitable_acres numeric;
+
+UPDATE multi_family SET habitable_acres = (ST_Area(geom) / 43560)
+
 DROP TABLE IF EXISTS max_multifam CASCADE;
 CREATE TABLE max_multifam WITH OIDS AS
 	--43,560 square feet in an acre
-	SELECT mf.gid, mf.geom, mf.metro_id, mf.units, mf.unit_type, (mf.area / 43560) as acres, mf.mixed_use,
+	SELECT mf.gid, mf.geom, mf.metro_id, mf.units, mf.unit_type, mf.habitable_acres, mf.mixed_use,
 		iso.max_zone, iso.walk_dist, mf.yearbuilt, min(iso.incpt_year) AS max_year
 	FROM multi_family mf
 		JOIN isocrones iso
 		ON ST_Intersects(mf.geom, iso.geom)
-	GROUP BY mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type, mf.area, mf.mixed_use,
-		iso.max_zone, iso.walk_dist;
+	GROUP BY mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type, mf.habitable_acres, 
+		mf.mixed_use, iso.max_zone, iso.walk_dist;
 
 DROP INDEX IF EXISTS mf_in_isos_gid_ix CASCADE;
 CREATE INDEX mf_in_isos_gid_ix ON max_multifam USING BTREE (gid);
@@ -141,5 +156,3 @@ UPDATE comparison_multifam cmf SET max_year = (
 	FROM max_stops ms
 	WHERE ms.max_zone = cmf.max_zone
 	LIMIT 1);
-
---ran in 472,601 ms (~7.9 minutes) on 2/14/14
