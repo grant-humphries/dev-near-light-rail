@@ -1,3 +1,8 @@
+--Grant Humphries for TriMet, 2013-14
+--PostGIS Version: 2.1
+--PostGreSQL Version: 9.3
+---------------------------------
+
 --Below are two solutions that erase water bodies and natural areas from taxlots.  At this time this 
 --process takes too long in PostGIS to be viable, but I learned a bit writing these and want to keep 
 --them on hand.  I believe the long execution time here has more to do with the platform than inefficent
@@ -22,8 +27,6 @@ CREATE TEMP TABLE erase1geom AS
 	SELECT ST_Union(geom) AS geom
 	FROM (water_and_parks
 	GROUP BY collapser;
-
-DROP TABLE water_and_parks CASCADE;
 
 --Erase water and park features from taxlot polygons
 DROP TABLE IF EXISTS taxlots_trimmed CASCADE;

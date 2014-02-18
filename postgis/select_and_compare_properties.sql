@@ -1,3 +1,8 @@
+--Grant Humphries for TriMet, 2013-14
+--PostGIS Version: 2.1
+--PostGreSQL Version: 9.3
+---------------------------------
+
 --Taxlots
 
 --Since parks and water bodies have been 'erased' for taxlots in previous steps the attribute that
@@ -17,14 +22,14 @@ UPDATE taxlot SET habitable_acres = (ST_Area(geom) / 43560);
 --a taxlot is within walking distance multiple stops that are in different 'MAX Zones'
 DROP TABLE IF EXISTS max_taxlots CASCADE;
 CREATE TABLE max_taxlots WITH OIDS AS
-	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse, 
-		iso.max_zone, iso.walk_dist, tl.yearbuilt, min(incpt_year) AS max_year
+	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse,
+		tl.yearbuilt, min(iso.incpt_year) AS max_year, iso.max_zone, iso.walk_dist
 	FROM taxlot tl
 		JOIN isocrones iso
 		--This command joins two features only if they intersect
 		ON ST_Intersects(tl.geom, iso.geom)
-	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.yearbuilt, tl.habitable_acres, tl.prop_code, 
-		tl.landuse, iso.max_zone, iso.walk_dist;
+	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse,
+		tl.yearbuilt, iso.max_zone, iso.walk_dist;
 
 --A comparison will be done later on the gid from this table and gid in comparison_taxlots.
 --This index will speed that computation

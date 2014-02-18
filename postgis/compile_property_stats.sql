@@ -1,3 +1,8 @@
+--Grant Humphries for TriMet, 2013-14
+--PostGIS Version: 2.1
+--PostGreSQL Version: 9.3
+---------------------------------
+
 --This script generates figures for tax lots newly built upon deemed to have been influence by the 
 --construction of MAX
 
@@ -5,14 +10,20 @@
 --total value calculation, but include all lots in zone for area calculation
 DROP TABLE IF EXISTS grouped_max_tls CASCADE;
 CREATE TEMP TABLE grouped_max_tls AS
-	SELECT mt1.max_zone, mt1.max_year, mt1.walk_dist, sum(mt1.totalval) AS totalval,
+	SELECT mt1.max_zone, 
+		--The Central Business District is the only MAX zone that has areas within it that are assigned
+		--to different MAX years, that issue is handled with the case statemnent below
+		(CASE WHEN mt1.max_zone = 'Central Business District' THEN 'Variable (1980, 1999, 2003)'
+		 	ELSE min(mt1.max_year)::text
+		 END) AS max_year,
+		mt1.walk_dist, sum(mt1.totalval) AS totalval,
 		(SELECT	sum(mt2.habitable_acres)
 			FROM max_taxlots mt2
 			WHERE mt2.max_zone = mt1.max_zone
 			GROUP BY mt2.max_zone) AS habitable_acres
 	FROM max_taxlots mt1
 	WHERE yearbuilt >= max_year
-	GROUP BY mt1.max_zone, mt1.max_year, mt1.walk_dist;
+	GROUP BY mt1.max_zone, mt1.walk_dist;
 
 --This temp table removes duplicates that exist when taxlots are within walking distance of multiple stops
 --that have different 'max zone' associations
@@ -68,7 +79,7 @@ INSERT INTO grouped_tls
 
 --Taxlots with the 9 most populous cities in the TriMet districy
 INSERT INTO grouped_tls
-	SELECT 'Nine Most Populous Cities', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
+	SELECT 'Nine Biggest Cities in TM District', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
 		(SELECT sum (ct2.habitable_acres) 
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
@@ -81,7 +92,7 @@ INSERT INTO grouped_tls
 
 --Within the TriMet District, but doesn't not include taxlots that are within walking distance of MAX
 INSERT INTO grouped_tls
-	SELECT 'TM District not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
+	SELECT 'TM District, not in MAX walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
 		(SELECT sum (ct2.habitable_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
@@ -96,7 +107,7 @@ INSERT INTO grouped_tls
 
 --UGB not near MAX
 INSERT INTO grouped_tls
-	SELECT 'UGB not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
+	SELECT 'UGB, not in MAX walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
 		(SELECT sum (ct2.habitable_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
@@ -111,7 +122,7 @@ INSERT INTO grouped_tls
 
 --9 Cities not near MAX
 INSERT INTO grouped_tls
-	SELECT 'Nine Cities not Near MAX', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
+	SELECT 'Nine Biggest Cities, not in MAX walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) AS totalval,
 		(SELECT sum (ct2.habitable_acres)
 			FROM comparison_taxlots ct2
 			WHERE ct2.max_zone = ct1.max_zone
@@ -166,14 +177,14 @@ INSERT INTO grouped_mf
 	GROUP BY max_zone;
 
 INSERT INTO grouped_mf
-	SELECT 'Nine Most Populous Cities', max_zone, sum(units) AS units
+	SELECT 'Nine Biggest Cities in TM District', max_zone, sum(units) AS units
 	FROM comparison_multifam
 	WHERE yearbuilt >= max_year
 		AND nine_cities = TRUE
 	GROUP BY max_zone;
 
 INSERT INTO grouped_mf
-	SELECT 'TM District not Near MAX', max_zone,sum(units) AS units
+	SELECT 'TM District, not in MAX walkshed', max_zone,sum(units) AS units
 	FROM comparison_multifam
 	WHERE yearbuilt >= max_year
 		AND tm_dist = TRUE
@@ -181,7 +192,7 @@ INSERT INTO grouped_mf
 	GROUP BY max_zone;
 
 INSERT INTO grouped_mf
-	SELECT 'UGB not Near MAX', max_zone, sum(units) AS units
+	SELECT 'UGB, not in MAX walkshed', max_zone, sum(units) AS units
 	FROM comparison_multifam
 	WHERE yearbuilt >= max_year
 		AND ugb = TRUE
@@ -189,7 +200,7 @@ INSERT INTO grouped_mf
 	GROUP BY max_zone;
 
 INSERT INTO grouped_mf
-	SELECT 'Nine Cities not Near MAX', max_zone, sum(units) AS units
+	SELECT 'Nine Biggest Cities, not in MAX walkshed', max_zone, sum(units) AS units
 	FROM comparison_multifam
 	WHERE yearbuilt >= max_year
 		AND nine_cities = TRUE
@@ -203,7 +214,7 @@ DROP TABLE IF EXISTS property_stats CASCADE;
 CREATE TABLE property_stats (
 	group_desc text,
 	max_zone text,
-	max_year int,
+	max_year text,
 	walk_distance numeric,
 	totalval numeric,
 	normalized_value numeric, --dollars of development per acre
@@ -213,7 +224,7 @@ CREATE TABLE property_stats (
 WITH OIDS;
 
 INSERT INTO property_stats
-	SELECT 'Properties Near MAX', gmt.max_zone, gmt.max_year, gmt.walk_dist, gmt.totalval,
+	SELECT 'Properties in MAX Walkshed', gmt.max_zone, gmt.max_year, gmt.walk_dist, gmt.totalval,
 		(gmt.totalval / gmt.habitable_acres), gmm.units, (gmm.units / gmt.habitable_acres), gmt.habitable_acres
 	FROM grouped_max_tls gmt, grouped_max_mf gmm
 	WHERE gmt.max_zone = gmm.max_zone;
@@ -234,8 +245,34 @@ INSERT INTO property_stats
 	sum(housing_units), (sum(housing_units) / sum(habitable_acres)), sum(habitable_acres) 
 	FROM property_stats
 	--The properties near max should not be summed this way because there would be double counting
-	--they've alreacy been summed properly and inserted to the table
-	WHERE group_desc != 'Properties Near MAX'
+	--they've alreacdy been summed properly and inserted to the table earlier in the script
+	WHERE group_desc != 'Properties in MAX Walkshed'
 	GROUP BY group_desc;
 
---ran in 12,221 ms on 2/14
+--The following attributes are being added so that the output can be formatted for presentation
+ALTER TABLE property_stats ADD group_rank int DEFAULT 0;
+UPDATE property_stats SET group_rank = 1
+	WHERE group_desc = 'Properties in MAX Walkshed';
+
+ALTER TABLE property_stats ADD zone_rank int DEFAULT 0;
+UPDATE property_stats SET zone_rank = 1
+	WHERE max_zone = 'All Zones';
+
+--Create and populate presentation tables.  Stats are being split into those that include MAX walkshed
+--taxlots for comparison and those that do not.
+DROP TABLE IF EXISTS pres_stats_w_near_max CASCADE;
+CREATE TABLE pres_stats_w_near_max WITH OIDS AS
+	SELECT group_desc, max_zone, max_year, walk_distance, totalval, normalized_value, housing_units, normalized_h_units
+	FROM property_stats
+	WHERE group_desc NOT LIKE '% not %'
+	ORDER BY zone_rank, max_zone, group_rank DESC, group_desc;
+
+DROP TABLE IF EXISTS pres_stats_minus_near_max CASCADE;
+CREATE TABLE pres_stats_minus_near_max WITH OIDS AS
+	SELECT group_desc, max_zone, max_year, walk_distance, totalval, normalized_value, housing_units, normalized_h_units
+	FROM property_stats
+	WHERE group_desc LIKE '% not %'
+		OR group_desc = 'Properties in MAX Walkshed'
+	ORDER BY zone_rank, max_zone, group_rank DESC, group_desc;
+
+--ran in 13,086 ms on 2/14 (may be benefitting from caching)

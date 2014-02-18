@@ -1,4 +1,4 @@
-# Copyright: (c) Grant Humphries for TriMet, 2013-14
+# Grant Humphries for TriMet, 2013-14
 # ArcGIS Version:   10.2.1
 # Python Version:   2.7.5
 #--------------------------------
@@ -111,7 +111,8 @@ arcpy.SpatialJoin_analysis(max_stops, max_zones, stops_with_zone, field_mapping=
 
 # Each MAX line has a decision to build year associated with it and that information needs to be
 # transferred to the stops.  If a MAX stop serves multiple lines year from the oldest line will be 
-# assigned
+# assigned.  ***Note that stops within the CBD will not all have the same MAX year as stops within
+#that region were not all built at the same time (which is not the case for all other MAX zones)***
 f_name = 'incpt_year'
 f_type = 'Short'
 arcpy.AddField_management(stops_with_zone, f_name, f_type)
