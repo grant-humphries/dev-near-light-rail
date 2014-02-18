@@ -1,12 +1,16 @@
 # Copyright: (c) Grant Humphries for TriMet, 2013-14
-# ArcGIS Version:   10.2
+# ArcGIS Version:   10.2.1
 # Python Version:   2.7.5
 #--------------------------------
 
 import os
 import re
+import time
 import arcpy
 from arcpy import env
+
+# This starts a timer that will be used to measure the run time of this script
+time.clock()
 
 # Check out the Network Analyst extension license
 arcpy.CheckOutExtension("Network")
@@ -242,8 +246,53 @@ with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
 	for origin_id, stop_id, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[origin_id])
 
-print 'Isocrones created'
+
+print 'Isocrones created in:'
+print time.clock(), 'seconds'
+
 #-----------------------------------------------------------------------------------------------------
+# Trim regions covered by water bodies and natural areas (including parks) from properties, the area of 
+# these taxlots will be used for normalization in statistics resultant from this project
 print ''
 print 'Beginning trimming of property data'
 
+
+taxlots = '//gisstore/gis/RLIS/TAXLOTS/taxlots.shp'
+multi_family = '//gisstore/gis/RLIS/LAND/multifamily_housing_inventory.shp'
+
+water = '//gisstore/gis/RLIS/WATER/stm_fill.shp'
+natural_areas = '//gisstore/gis/RLIS/LAND/orca.shp'
+
+water_dissolve = 'in_memory/water_dissolve'
+arcpy.Dissolve_management(water, water_dissolve)
+
+nat_areas_dissolve = 'in_memory/water_and_nat_areas'
+arcpy.Dissolve_management(natural_areas, nat_areas_dissolve)
+
+fields = ['OID@', 'SHAPE@']
+with arcpy.da.SearchCursor(water_dissolve, fields) as cursor:
+	for oid, geom in cursor:
+		water_geom = geom
+
+with arcpy.da.UpdateCursor(nat_areas_dissolve, fields) as cursor:
+	for oid, geom in cursor:
+		geom = geom.union(water_geom)
+		cursor.updateRow((oid, geom))
+
+# Assign feature class to more appropriately named variable now that it contains the geometry for both
+# water and natural areas
+water_and_nat_areas = nat_areas_dissolve
+
+# Free up memory as this dataset is no longer needed
+arcpy.Delete_management(water_dissolve)
+
+# UPDATE MAY BE FASTER THAN UNION ALSO THINKING ABOUT GRABBING THE GEOMETRY OBJECT WITH THE SEARCG CURSOR
+habitable_taxlots = os.path.join(env.workspace, 'habitable_taxlots.shp')
+arcpy.Erase_analysis(taxlots, water_and_nat_areas, habitable_taxlots)
+
+habitable_multifam = os.path.join(env.workspace, 'habitable_multifam.shp')
+arcpy.Erase_analysis(multi_family, water_and_nat_areas, habitable_multifam)
+
+print 'Total script run time:'
+print time.clock(), 'seconds'
+# ran in 2299.25480232 seconds (~38 minutes)on 2/17
