@@ -3,6 +3,7 @@
 # script won't be able to find it
 # Usage Type: Restriction
 # Restriction Usage: Prohibited
+# Use by Default?: Yes
 # Note that for this function 'True' means walking is prohibited and 'False' means that it's allowed
 def footPermissions(foot, access, highway, indoor):
 	if foot in ('yes', 'designated', 'permissive'):
@@ -20,6 +21,7 @@ footPermissions(!foot!, !access!, !highway!, !indoor!)
 # Usage Type: Cost
 # Units: leave as 'Unknown', see below for details
 # Data Type: Double
+# Use by Default?: No
 # length is assume to be in feet and walk speed is 3 miles per hour in this case
 def walkMinutes(length):
 	walk_time = length / (5280 * (3 / float(60)))
