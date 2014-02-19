@@ -8,9 +8,9 @@ Follow the steps below to refresh the data and generate a current version of the
 
 ## Update MAX Stop Data
 
-1. Connect to map server **maps5.trimet.org** with QGIS.
+1. Connect to map server **maps5.trimet.org** (or any other TriMet map server with PostGIS databases) with QGIS.
 2. Load the table **current.stop_ext**.
-3. Apply the following definition query to the data in order to filter out all non-MAX stops (but also be sure that this is what is desired for the current iteration of the project, there has been some discussion of adding frequent service bus and the streetcar has been analyzed in the past):
+3. Apply the following definition query to the data in order to filter out all non-MAX transit stops (but also be sure that this is what is desired for the current iteration of the project, there has been some discussion of adding frequent service bus and the streetcar has been analyzed in the past):
 
 ```sql
 SELECT * FROM current.stop_ext WHERE "type" = 5
@@ -18,15 +18,15 @@ SELECT * FROM current.stop_ext WHERE "type" = 5
 
 this query actually must be shorted to `"type" = 5` to be used in QGIS as it only interprets the where clause
 
-4. Create a new sub-folder at the following location: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` the folder should indicate the date of the current iteration and be in the following format **YYYY_MM**.
-5. Save the stops data as a shapefile with the projection **2913** (Oregon State Plane North) in the newly created folder and give it the name **max_stops.shp**.
+4. Create a new sub-folder at the following location: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` the folder should indicate the date of the current iteration and be in the following format `YYYY_MM`.
+5. Save the stops data as a shapefile with the projection Oregon State Plane North (epsg: **2913**) in the newly created folder and give it the name `max_stops.shp`.
 
 ## Update OSM Data and Import into PostGIS with Osmosis
 
-Original instructions on how load OSM data into a PostGreSQL database were found [here](http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/).  I modified this workflow in order to meet the needs of my project.
+Instruction outlines below were derived from a blog post found [here](http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/).  I've modified the orginal workflow in order to meet the needs of this project.
 
-1. Refresh the OSM data stored here: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm` with the nightly download that is saved here: `G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm`
-2. Create a PostGIS database in postgres and name it `osmosis_ped`
+1. Refresh the OSM data stored here: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm` with the nightly download that is written here: `G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm`
+2. Create a PostGIS database in postgres and name it **osmosis_ped**
 3. Create the Osmosis schema within the newly created database by running the following script that comes with the Osmosis download: `pgsimple_schema_0.6.sql`.  Do this by using the following command:
 
 ```
