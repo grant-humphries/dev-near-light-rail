@@ -27,18 +27,19 @@ Instruction outlines below were derived from a blog post found [here](http://ski
 
 1. Refresh the OSM data stored here: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm` with the nightly download that is written here: `G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm`
 2. Create a PostGIS database in postgres and name it **osmosis_ped**
-3. Create a schema compatable with Osmosis imports in the new database by running the following script (this file is included in the Osmosis download): `pgsimple_schema_0.6.sql`.  Execute the script by using the following command:
+3. Create a schema compatable with Osmosis imports in the new database by running the following script : `pgsimple_schema_0.6.sql` (this file is included in the Osmosis download).  Execute the script by using the following command:
 
 	```Shell
 	psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
 	```
 	It may also be neccessary to set the password for the postgres user using the command `SET pgpassword=xxx`
-4. Run Osmosis using the command in `osmosis\osmosis_command.sh`
+
+4. Run Osmosis using the command in `osmosis\osmosis_command.sh` in this repo.
 5. Run the following script: `dev-near-lightrail\osmosis\compose_trails.sql` to create a table that has the geometry of the streets and trails desired for the network analysis, to run this in the command line locally use the shell snippet below:
 
-```Shell
-psql -d osmosis_ped -U postgres -f "G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\github\dev-near-lightrail\osmosis\compose_trails.sql"
-```
+	```Shell
+	psql -d osmosis_ped -U postgres -f "G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\github\dev-near-lightrail\osmosis\compose_trails.sql"
+	```
 
 6. Connect to the `osmosis_ped` db with QGIS, add the table created in step 5 to the map and save it as shapefile with an ESPG of 2913.
 

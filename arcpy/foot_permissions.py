@@ -3,15 +3,17 @@
 # script won't be able to find it
 # Usage Type: Restriction
 # Restriction Usage: Prohibited
-def footPermissions(foot, access, highway):
+def footPermissions(foot, access, highway, indoor):
 	if foot in ('yes', 'designated', 'permissive'):
 		return False
-	elif access == 'no' or highway in ('trunk', 'motorway', 'construction') or foot == 'no':
+	elif access == 'no' or highway in ('trunk', 'motorway', 'construction') or foot == 'no' or indoor == 'yes':
 		return True
 	else:
 		return False
 
-footPermissions(!foot!, !access!, !highway!)
+footPermissions(!foot!, !access!, !highway!, !indoor!)
+
+# Directions applied to: both
 
 # Name: 'walk_minutes'
 # Usage Type: Cost
@@ -24,6 +26,8 @@ def walkMinutes(length):
 
 # created a new field and used !shape.length@feet! to calculate length in feet
 walkMinutes(!Shape!)
+
+# Directions applied to: both
 
 # NOTE!!!! Building the network dataset may not work if you set the units for the walk length attribute
 # to minutes, or if you set it at all, this seems to be a bug.  However to generate service areas using an

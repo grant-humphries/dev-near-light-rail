@@ -1,5 +1,5 @@
-drop table IF EXISTS streets_and_trails CASCADE;
-create table streets_and_trails (
+DROP TABLE IF EXISTS streets_and_trails CASCADE;
+CREATE TABLE streets_and_trails (
 	id serial primary key,
 	geom geometry, 
 	way_id bigint,
@@ -9,71 +9,75 @@ create table streets_and_trails (
 	highway text,
 	access text,
 	foot text,
-	surface text
-);
+	surface text, 
+	indoor text)
+WITH OIDS;
 	
-drop index IF EXISTS node_id_ix CASCADE;
-create index node_id_ix on nodes USING BTREE (id);
+DROP INDEX IF EXISTS node_id_ix CASCADE;
+CREATE INDEX node_id_ix ON nodes USING BTREE (id);
 
 --build the line segments using postgis st_makeline
 insert into streets_and_trails (geom, way_id)
-	select ST_MakeLine(n.geom order by wn.sequence_id), wn.way_id
-	from nodes n, way_nodes wn
-	where n.id = wn.node_id 
-	group by wn.way_id;
+	SELECT ST_MakeLine(n.geom order by wn.sequence_id), wn.way_id
+	FROM nodes n, way_nodes wn
+	WHERE n.id = wn.node_id 
+	GROUP BY wn.way_id;
 
-CREATE TEMPORARY TABLE sequence_count as
-	select way_id, min(sequence_id) as seq_min, max(sequence_id) as seq_max 
-	from way_nodes
-	group by way_id;
+CREATE TEMPORARY TABLE sequence_count AS
+	SELECT way_id, min(sequence_id) AS seq_min, max(sequence_id) AS seq_max 
+	FROM way_nodes
+	GROUP BY way_id;
 
 --create indices to speed up matches
-drop index IF EXISTS snt_way_id_ix CASCADE;
-create index snt_way_id_ix on streets_and_trails USING BTREE (way_id);
+DROP INDEX IF EXISTS snt_way_id_ix CASCADE;
+CREATE INDEX snt_way_id_ix ON streets_and_trails USING BTREE (way_id);
 
-drop index IF EXISTS way_tags_k_ix CASCADE;
-create index way_tags_k_ix on way_tags USING BTREE (k);
+DROP INDEX IF EXISTS way_tags_k_ix CASCADE;
+CREATE INDEX way_tags_k_ix ON way_tags USING BTREE (k);
 
-drop index IF EXISTS way_node_seq_id_ix CASCADE;
-create index way_node_seq_id_ix on way_nodes USING BTREE (sequence_id);
+DROP INDEX IF EXISTS way_node_seq_id_ix CASCADE;
+CREATE INDEX way_node_seq_id_ix ON way_nodes USING BTREE (sequence_id);
 
-drop index IF EXISTS seq_count_way_id_ix CASCADE;
-create index seq_count_way_id_ix on sequence_count USING BTREE (way_id);
+DROP INDEX IF EXISTS seq_count_way_id_ix CASCADE;
+CREATE INDEX seq_count_way_id_ix ON sequence_count USING BTREE (way_id);
 
-drop index IF EXISTS seq_count_min_ix CASCADE;
-create index seq_count_min_ix on sequence_count USING BTREE (seq_min);
+DROP INDEX IF EXISTS seq_count_min_ix CASCADE;
+CREATE INDEX seq_count_min_ix ON sequence_count USING BTREE (seq_min);
 
-drop index IF EXISTS seq_count_max_ix CASCADE;
-create index seq_count_max_ix on sequence_count USING BTREE (seq_max);
+DROP INDEX IF EXISTS seq_count_max_ix CASCADE;
+CREATE INDEX seq_count_max_ix ON sequence_count USING BTREE (seq_max);
 
---add 'to' and 'from' node id's
-update streets_and_trails as snt set
-	from_node = (select wn.node_id from way_nodes wn
-		where snt.way_id = wn.way_id 
-		and EXISTS (select null from sequence_count sc
-						where wn.way_id = sc.way_id
-						and wn.sequence_id = sc.seq_min)),
+--add 'to' AND 'FROM' node id's
+update streets_and_trails AS snt set
+	from_node = (SELECT wn.node_id FROM way_nodes wn
+		WHERE snt.way_id = wn.way_id 
+		AND EXISTS (SELECT null FROM sequence_count sc
+						WHERE wn.way_id = sc.way_id
+						AND wn.sequence_id = sc.seq_min)),
 
-	to_node = (select wn.node_id from way_nodes wn
-		where snt.way_id = wn.way_id 
-		and EXISTS (select null from sequence_count sc
-						where wn.way_id = sc.way_id
-						and wn.sequence_id = sc.seq_max)),
+	to_node = (SELECT wn.node_id FROM way_nodes wn
+		WHERE snt.way_id = wn.way_id 
+		AND EXISTS (SELECT null FROM sequence_count sc
+						WHERE wn.way_id = sc.way_id
+						AND wn.sequence_id = sc.seq_max)),
 
 	--add the rest of the street/trail attributes
-	name = (select wt.v from way_tags wt
-		where snt.way_id = wt.way_id and wt.k = 'name'),
+	name = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'name'),
 
-	highway = (select wt.v from way_tags wt
-		where snt.way_id = wt.way_id and wt.k = 'highway'),
+	highway = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'highway'),
 
-	access = (select wt.v from way_tags wt
-		where snt.way_id = wt.way_id and wt.k = 'access'),
+	access = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'access'),
 
-	foot = (select wt.v from way_tags wt
-		where snt.way_id = wt.way_id and wt.k = 'foot'),
+	foot = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'foot'),
 
-	surface = (select wt.v from way_tags wt
-		where snt.way_id = wt.way_id and wt.k = 'surface');
+	surface = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'surface'),
 
-drop table sequence_count;
+	indoor = (SELECT wt.v FROM way_tags wt
+		WHERE snt.way_id = wt.way_id AND wt.k = 'indoor');
+
+DROP TABLE sequence_count;

@@ -16,7 +16,7 @@ arcpy.CheckOutExtension("Network")
 env.overwriteOutput = True
 env.addOutputsToMap = True
 # BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2013_12'
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02'
 
 # Create a temp folder to hold intermediate datasets if it doesn't already exist
 if not os.path.exists(os.path.join(env.workspace, 'temp')):
@@ -31,7 +31,7 @@ max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
 # This section can be removed once the orange line stops are added to maps5
 #-----------------------------------------------------------------------------------------------------
-orange_stops = os.path.join(env.workspace, 'projected_orange_line_stops.shp')
+orange_stops = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/projected_orange_line_stops.shp'
 
 # there are currently no 6 digit stop id's so I'm starting at 100,000 to ensure these will be unique
 new_stop_id = 100000
