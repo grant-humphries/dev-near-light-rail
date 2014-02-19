@@ -43,24 +43,27 @@ with arcpy.da.SearchCursor(max_stops, fields) as cursor:
 
 # Create a starting point for new trimet id's for the orange line stops.  There are currently no trimet id's
 # over 20,000 so I'm starting at 50,000 to prevent conflict
-new_stop_id = 50000
+new_max_id = 50000
 
-# Add orange line stops to max stops feature class
-line_name = ':MAX Orange Line:'
-i_fields = ['SHAPE@', 'id', 'routes']
-i_cursor = arcpy.da.InsertCursor(max_stops, i_fields)
+# If the first new MAX is already in the max_stops table it means that the orange line stops have already been
+# added to the max stops feature class and thus the clause below shouldn't be run 
+if new_max_id not in id_list:
+	# Add orange line stops to max stops feature class
+	line_name = ':MAX Orange Line:'
+	i_fields = ['SHAPE@', 'id', 'routes']
+	i_cursor = arcpy.da.InsertCursor(max_stops, i_fields)
 
-fields = ['OID@', 'SHAPE@']
-with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
-	for oid, geom in cursor:
-		# ensure existing trimet id's aren't being used
-		while new_stop_id in id_list:
-			new_stop_id += 1
-		
-		i_cursor.insertRow((geom, new_stop_id, line_name))
-		id_list.append(new_stop_id)
+	fields = ['OID@', 'SHAPE@']
+	with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
+		for oid, geom in cursor:
+			# ensure existing trimet id's aren't being used
+			while new_max_id in id_list:
+				new_max_id += 1
+			
+			i_cursor.insertRow((geom, new_max_id, line_name))
+			id_list.append(new_max_id)
 
-del i_cursor
+	del i_cursor
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -75,15 +78,18 @@ max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/dat
 # Move the values in 'name' to a new field to preserve them, then overwrite the original with unique id
 # from the (trimet) 'id' field
 f_name = 'stop_name'
-f_type = 'TEXT'
-arcpy.AddField_management(max_stops, f_name, f_type)
+max_stop_desc = arcpy.Describe(max_stops)
+# if 'stop_name' field already exists that means this code block has already been run so skip
+if f_name not in [field.name for field in max_stop_desc.fields]:
+	f_type = 'TEXT'
+	arcpy.AddField_management(max_stops, f_name, f_type)
 
-fields = ['id', 'name', 'stop_name']
-with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-	for tm_id, name, stop_name in cursor:
-		stop_name = name
-		name = str(int(tm_id))
-		cursor.updateRow((tm_id, name, stop_name))
+	fields = ['id', 'name', 'stop_name']
+	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
+		for tm_id, name, stop_name in cursor:
+			stop_name = name
+			name = str(int(tm_id))
+			cursor.updateRow((tm_id, name, stop_name))
 
 # An attribute needs to be added to the max stops layer that indicates which 'MAX zone' it falls within.
 # This will be done with a spatial join, but in order to properly add a field that will contain that
@@ -294,10 +300,10 @@ water_and_nat_areas = nat_areas_dissolve
 arcpy.Delete_management(water_dissolve)
 
 # Erase merged water and parks late
-habitable_taxlots = os.path.join(env.workspace, 'habitable_taxlots.shp')
-arcpy.Erase_analysis(taxlots, water_and_nat_areas, habitable_taxlots)
+trimmed_taxlots = os.path.join(env.workspace, 'trimmed_taxlots.shp')
+arcpy.Erase_analysis(taxlots, water_and_nat_areas, trimmed_taxlots)
 
-habitable_multifam = os.path.join(env.workspace, 'habitable_multifam.shp')
-arcpy.Erase_analysis(multi_family, water_and_nat_areas, habitable_multifam)
+trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
+arcpy.Erase_analysis(multi_family, water_and_nat_areas, trimmed_multifam)
 
 timing.endlog()
