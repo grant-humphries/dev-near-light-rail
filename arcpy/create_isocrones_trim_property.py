@@ -26,7 +26,7 @@ if not os.path.exists(os.path.join(env.workspace, 'temp')):
 # orange line is completed, grab the data from maps5 for most up-to-date product and ensure the schema
 # matches what is being called upon in the script.  Also be sure that none of the stops are snapping to the
 # sky bridges in downtown as this has been an issue in the past
-max_stops = os.path.join(env.workspace, 'max_stops_2013_12.shp')
+max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
 
 # This section can be removed once the orange line stops are added to maps5

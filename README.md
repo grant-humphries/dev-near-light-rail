@@ -1,15 +1,15 @@
 # Overview
 
-This repo contains scripts that automate the majority of the process of finding taxlots near light rail stops and determining the value of development that has occurred since those stops have been built.  Part of this process is a network analysis from the stop to the taxlots that are within a given walking distance.  This routing is done with ArcGIS's network analsyt (at this time, I am looking to migrate this to pg_routing at some point) and files that play a role of the creation of the network which is derived from OSM data and Osmosis are contained in this repo as well.  The primary output of this project is a set of statistics that describe the total value of properties that are within the set walking threshold of a MAX stop and have been built up since the nearby MAX stop was created.  A number of spatial dataset are a by product of this analysis and could be used to create maps further explaining the analysis.
+This repo contains scripts that automate the majority of the process of finding taxlots within walking distance of light rail stops, determining the value of development that has occurred since those stops have been built, and comparing that growth to other areas in the Portland metro region.  Part of this process is a network analysis from each stop to the taxlots that are within a given walking distance.  This routing is done with ArcGIS's network analsyt (at this time, I am looking to migrate this to PostGres's pg_routing at some point) and files that play a role in the creation of the network which is derived from OSM data run through Osmosis are contained in this repo as well.  The primary output of this project is a set of statistics that describe the total value of properties that are within a walking threshold of MAX stops and that have been built upon/remodeled since the nearby MAX stop was created.  A number of spatial datasets are a by-product of this analysis and can (and have) been used to create maps that further explain the analysis.
 
 # Project Workflow
 
-Follow the steps below to refresh the data and generate an current version of the statistics and supporting spatial data.
+Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
 
 ## Update MAX Stop Data
 
-1. Connect to map server `maps5.trimet.org` with QGIS.
-2. Load the table `current.stop_ext`.
+1. Connect to map server **maps5.trimet.org** with QGIS.
+2. Load the table **current.stop_ext**.
 3. Apply the following definition query to the data in order to filter out all non-MAX stops (but also be sure that this is what is desired for the current iteration of the project, there has been some discussion of adding frequent service bus and the streetcar has been analyzed in the past):
 
 ```sql
@@ -18,13 +18,12 @@ SELECT * FROM current.stop_ext WHERE "type" = 5
 
 this query actually must be shorted to `"type" = 5` to be used in QGIS as it only interprets the where clause
 
-4. Create a new sub-folder at the following location: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` the folder should represent the data and be in the following format `YYYY_MM`.
-5. Save the stops data as a shapefile with the projection `2913` in the newly created folder and include the date in the name of the shapefile.
+4. Create a new sub-folder at the following location: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` the folder should indicate the date of the current iteration and be in the following format **YYYY_MM**.
+5. Save the stops data as a shapefile with the projection **2913** (Oregon State Plane North) in the newly created folder and give it the name **max_stops.shp**.
 
 ## Update OSM Data and Import into PostGIS with Osmosis
 
-Original instructions on how load OSM data into a PostGreSQL database were found here:
-http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/.  I modified this workflow in order to meet the needs of my project.
+Original instructions on how load OSM data into a PostGreSQL database were found [here](http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/).  I modified this workflow in order to meet the needs of my project.
 
 1. Refresh the OSM data stored here: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm` with the nightly download that is saved here: `G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm`
 2. Create a PostGIS database in postgres and name it `osmosis_ped`
