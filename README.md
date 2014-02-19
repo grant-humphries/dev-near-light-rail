@@ -34,21 +34,21 @@ Instruction outlines below were derived from a blog post found [here](http://ski
 	```
 	It may also be neccessary to set the password for the postgres user using the command `SET pgpassword=xxx`
 
-4. Run Osmosis using the command in `osmosis\osmosis_command.sh` in this repo.
-5. Run the following script: `dev-near-lightrail\osmosis\compose_trails.sql` to create a table that has the geometry of the streets and trails desired for the network analysis, to run this in the command line locally use the shell snippet below:
+4. Import the OpenStreetMap data into the database via Osmosis by pasting the command stored here `osmosis\osmosis_command.sh` (within this repo) into the command prompt.
+5. Turn the deconstructed OSM data (this is the format that Osmosis produces) back into line segments by running the script stored here: `dev-near-lightrail\osmosis\compose_trails.sql`.  Anything that is not a street or trails has been filtered out by Osmosis.  Use the command below to run the script from the command prompt:
 
 	```Shell
 	psql -d osmosis_ped -U postgres -f "G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\github\dev-near-lightrail\osmosis\compose_trails.sql"
 	```
 
-6. Connect to the `osmosis_ped` db with QGIS, add the table created in step 5 to the map and save it as shapefile with an ESPG of 2913.
+6. Create a shapefile of the OSM data by connecting to the **osmosis_ped** database with QGIS, adding the table created in step 5 (which is called **streets_and_trails**) to the map and saving it as shapefile called `osm_foot.shp` with an ESPG of **2913**.
 
 ## Create Network Dataset with ArcGIS's Network Analyst
 
-This step can't be automated at this time AFAIK, but I'll will continue to check back for this functionality as new version of ArcGIS are released as that ability would save some time.
+As of 2/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is 'one-click' automation.  To create a routable network dataset do the following:
 
-1. Right click on the current OpenStreetMap shapefile and select 'New Network Dataset'
-2. Use the default name
+1. In ArcMap right click OpenStreetMap shapefile created in the last step and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+2. In the next screen use the default name for the file
 3. Keep default of modeling turns
 4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
 5. Leave Z-input as 'None'
@@ -56,10 +56,10 @@ This step can't be automated at this time AFAIK, but I'll will continue to check
 7.  Select 'No' for the establishment of driving directions
 8.  Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
-## Generate Walk Distance Isocrones
+## Generate Walk Distance Isocrones and Trim Property Data
 
-Run `network_analyst\create_isocrones.py`.  Be sure change the file path for the project workspace to the new folder that will be created when the MAX stop data is updated and saved or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.
+The heavy lifting of the analysis is in these next two phases and almost all of is automated.  To create walkshed polygons (aka i'socrones') for each of the MAX stops run `arcpy\create_isocrones_trim_property.py`.  Be sure **change the file path for the project workspace** to the new folder that was created when the MAX stop data was updated at the beginning of this workflow or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.  The script named above also erases water bodies, parks and natural areas from properties which they overlap.  This is a very computationally intensive process and took about 38 minutes to complete when I last attempted.
 
-## Generate Final Stats
+## Select and Compare Property Data and Generate Final Stats
 
-Run `arcpy\select_taxlots.py`.  This script determines which tax lots and multi-family units meet spatial and attribute criteria to be considered a part of growth that was a least in part due to the construction of a MAX line.  Be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.
+This ste  Run `postgis\select_taxlots.py`.  This script determines which tax lots and multi-family units meet spatial and attribute criteria to be considered a part of growth that was a least in part due to the construction of a MAX line.  Be sure to change file paths to the new project folder created at the beginning of these instructions.  Updates to the Taxlot and Multi-Family unit data that is used within this script will happen automatically as a part of other processes not related to this project.

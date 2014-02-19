@@ -3,6 +3,7 @@
 # script won't be able to find it
 # Usage Type: Restriction
 # Restriction Usage: Prohibited
+# Note that for this function 'True' means walking is prohibited and 'False' means that it's allowed
 def footPermissions(foot, access, highway, indoor):
 	if foot in ('yes', 'designated', 'permissive'):
 		return False
