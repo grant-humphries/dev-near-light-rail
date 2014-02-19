@@ -42,3 +42,4 @@ walkMinutes(!Shape!)
 # Also the PostGIS streets and trails layer is being saved as a shape file by QGIS is currently adding 
 # leading spaces in front of the attributes values, these must be removed for the functions above to work
 # (use python 'field'.strip() in field calculator)
+# UPDATE: leading spaces were not present on 2/2014 iteration

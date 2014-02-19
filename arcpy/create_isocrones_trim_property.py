@@ -29,33 +29,38 @@ if not os.path.exists(os.path.join(env.workspace, 'temp')):
 max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
 
-# This section can be removed once the orange line stops are added to maps5
 #-----------------------------------------------------------------------------------------------------
+# This section can be removed once the orange line stops are added to maps5
+
 orange_stops = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/projected_orange_line_stops.shp'
 
-# there are currently no 6 digit stop id's so I'm starting at 100,000 to ensure these will be unique
-new_stop_id = 100000
-
-# make sure that these stops haven't already been added to main dataset
+# Make a list of all trimet id's that are assigned to stops in the max_stops dataset
 id_list = []
 fields = ['OID@', 'id']
 with arcpy.da.SearchCursor(max_stops, fields) as cursor:
 	for oid, data_id in cursor:
 		id_list.append(data_id)
 
-# if they haven't add them
-if new_stop_id not in id_list:
-	line_name = ':MAX Orange Line:'
-	i_fields = ['Shape@', 'id', 'routes']
-	i_cursor = arcpy.da.InsertCursor(max_stops, i_fields)
+# Create a starting point for new trimet id's for the orange line stops.  There are currently no trimet id's
+# over 20,000 so I'm starting at 50,000 to prevent conflict
+new_stop_id = 50000
 
-	fields = ['OID@', 'Shape@']
-	with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
-		for oid, geom in cursor:
-			i_cursor.insertRow((geom, new_stop_id, line_name))
+# Add orange line stops to max stops feature class
+line_name = ':MAX Orange Line:'
+i_fields = ['SHAPE@', 'id', 'routes']
+i_cursor = arcpy.da.InsertCursor(max_stops, i_fields)
+
+fields = ['OID@', 'SHAPE@']
+with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
+	for oid, geom in cursor:
+		# ensure existing trimet id's aren't being used
+		while new_stop_id in id_list:
 			new_stop_id += 1
+		
+		i_cursor.insertRow((geom, new_stop_id, line_name))
+		id_list.append(new_stop_id)
 
-	del i_cursor
+del i_cursor
 
 
 #-----------------------------------------------------------------------------------------------------
@@ -63,22 +68,22 @@ if new_stop_id not in id_list:
 # These areas will be used to divide the stops into tabulation groups
 max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
-# The field 'Name' must be added because only a field of this name will be retained when locations
-# are loaded into service area analysis.  I need to field (unique identifier) that will allow me to 
-# link the other attributes of this data to the network analyst output
-rs_desc = arcpy.Describe(max_stops)
-f_name = 'Name'
-if f_name.lower() not in [field.name.lower() for field in rs_desc.fields]:
-	f_type = 'Text'
-	arcpy.AddField_management(max_stops, f_name, f_type)
+# Only a field called 'name' will be retained when locations are loaded into service area analysis as the
+# MAXstops will be.  In that field I need unique identifiers so attributes from this data can be properly
+# linked to the network analyst output
 
-	# Am using OID here instead of 'STATION' because there are some duplicates in station names
-	fields = ['id', 'Name']
-	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-		for data_id, name in cursor:
-			name = str(int(data_id))
-			cursor.updateRow((data_id, name))
+# Move the values in 'name' to a new field to preserve them, then overwrite the original with unique id
+# from the (trimet) 'id' field
+f_name = 'stop_name'
+f_type = 'TEXT'
+arcpy.AddField_management(max_stops, f_name, f_type)
 
+fields = ['id', 'name', 'stop_name']
+with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
+	for tm_id, name, stop_name in cursor:
+		stop_name = name
+		name = str(int(tm_id))
+		cursor.updateRow((tm_id, name, stop_name))
 
 # An attribute needs to be added to the max stops layer that indicates which 'MAX zone' it falls within.
 # This will be done with a spatial join, but in order to properly add a field that will contain that
@@ -111,12 +116,13 @@ arcpy.SpatialJoin_analysis(max_stops, max_zones, stops_with_zone, field_mapping=
 
 # Each MAX line has a decision to build year associated with it and that information needs to be
 # transferred to the stops.  If a MAX stop serves multiple lines year from the oldest line will be 
-# assigned.  ***Note that stops within the CBD will not all have the same MAX year as stops within
-#that region were not all built at the same time (which is not the case for all other MAX zones)***
+# assigned. 
 f_name = 'incpt_year'
-f_type = 'Short'
+f_type = 'SHORT'
 arcpy.AddField_management(stops_with_zone, f_name, f_type)
 
+# ***Note that stops within the CBD will not all have the same MAX year as stops within
+# that region were not all built at the same time (which is not the case for all other MAX zones)***
 fields = ['routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(stops_with_zone, fields) as cursor:
 	for routes, zone, year in cursor:
@@ -138,7 +144,7 @@ max_stop_layer = 'max_stop_layer'
 arcpy.MakeFeatureLayer_management(stops_with_zone, max_stop_layer)
 
 # Select only MAX in the CBD
-select_type = 'New_Selection'
+select_type = 'NEW_SELECTION'
 where_clause = """ "max_zone" = 'Central Business District' """
 arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type, where_clause)
 
@@ -146,7 +152,7 @@ cbd_max = 'in_memory/cbd_max'
 arcpy.CopyFeatures_management(max_stop_layer, cbd_max)
 
 # Now select all MAX that are not in the CBD
-select_type = 'Switch_Selection'
+select_type = 'SWITCH_SELECTION'
 arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type)
 
 outer_max = 'in_memory/outer_max'
@@ -162,21 +168,21 @@ outer_max_set.load(outer_max)
 
 # Create a new feature class to store all of the isochrones that will be created
 all_isocrones = os.path.join(env.workspace, 'rail_stop_isocrones.shp')
-geom_type = 'Polygon'
+geom_type = 'POLYGON'
 epsg = arcpy.SpatialReference(2913)
 arcpy.CreateFeatureclass_management(os.path.dirname(all_isocrones), os.path.basename(all_isocrones), 
 									geom_type, spatial_reference=epsg)
 
 # Add all fields that are needed in the new feature class, and drop the 'Id' field that is created
 # by default when a new fc w/ no additional fields in created
-field_names = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
+field_names = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
-	if f_name in ('origin_id', 'stop_id', 'incpt_year'):
-		f_type = 'Long'
-	elif f_name in ('routes', 'max_zone'):
-		f_type = 'Text'
+	if f_name in ('stop_id', 'incpt_year'):
+		f_type = 'LONG'
+	elif f_name in ('tm_id', 'routes', 'max_zone'):
+		f_type = 'TEXT'
 	elif f_name == 'walk_dist':
-		f_type = 'Double'
+		f_type = 'DOUBLE'
 	
 	arcpy.AddField_management(all_isocrones, f_name, f_type)
 
@@ -184,19 +190,19 @@ drop_field = 'Id'
 arcpy.DeleteField_management(all_isocrones, drop_field)
 
 # create an insert cursor to populate the new feature class with the isocrones that will be generated
-i_fields = ['Shape@', 'origin_id', 'walk_dist']
+i_fields = ['SHAPE@', 'tm_id', 'walk_dist']
 i_cursor = arcpy.da.InsertCursor(all_isocrones, i_fields) 
 
 # Set static parameters for service area analysis (isocrone generation)
-break_units = 'Feet'
-osm_network = os.path.join(env.workspace, 'osm_foot_2013_12_ND.nd')
+break_units = 'FEET'
+osm_network = os.path.join(env.workspace, 'osm_foot_ND.nd')
 permissions = 'foot_permissions'
-exclude_restricted = 'Exclude'
-polygon_overlap = 'Disks'
+exclude_restricted = 'EXCLUDE'
+polygon_overlap = 'DISKS'
 # polygon trim is critical this cuts out area of the polygons where no traversable features exist for at lease
 # the given distance, 100 meters is the default and seems to work well
-polygon_trim = '100 Meters'
-polygon_simp = '5 Feet'
+polygon_trim = '100 METERS'
+polygon_simp = '5 FEET'
 
 # This function creates isocrones for the input locations and adds them to a new feature class, each time 
 # function is run the new isocrones are added to the same feature class
@@ -207,11 +213,11 @@ def generateIsocrones(locations, break_value, isocrones):
 									Polygon_Overlap_Type=polygon_overlap, Polygon_Trim_Distance=polygon_trim,
 									Polygon_Simplification_Tolerance=polygon_simp)
 
-	s_fields = ['Shape@', 'Name']
+	s_fields = ['SHAPE@', 'Name']
 	with arcpy.da.SearchCursor(isocrones, s_fields) as cursor:
 		for geom, output_name in cursor:
-			origin_id = re.sub(' : 0 - ' + str(break_value) + '$', '', output_name)
-			i_cursor.insertRow((geom, origin_id, break_value))
+			tm_id = re.sub(' : 0 - ' + str(break_value) + '$', '', output_name)
+			i_cursor.insertRow((geom, tm_id, break_value))
 
 
 # Set variable parameters specific to each set of isocrones:
@@ -232,17 +238,17 @@ del i_cursor
 
 # Get value attributes from the original rail stops data set and add it to the new isocrones
 # feature class, matching corresponding features
-fields = ['id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['name', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
-	for origin_id, stop_id, routes, zone, year in cursor:
-		rail_stop_dict[origin_id] = (origin_id, stop_id, routes.strip(), zone, year)
+	for tm_id, stop_id, routes, zone, year in cursor:
+		rail_stop_dict[tm_id] = (tm_id, stop_id, routes.strip(), zone, year)
 
 # replace the first entry in fields with rail_stop, the others neccessarily stay the same
-fields = ['origin_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
-	for origin_id, stop_id, routes, zone, year in cursor:
-		cursor.updateRow(rail_stop_dict[origin_id])
+	for tm_id, stop_id, routes, zone, year in cursor:
+		cursor.updateRow(rail_stop_dict[tm_id])
 
 # The timing module, which I found here: 
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution/1557906#1557906
