@@ -27,9 +27,9 @@ Instruction outlines below were derived from a blog post found [here](http://ski
 
 1. Refresh the OSM data stored here: `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\osm_data\or-wa.osm` with the nightly download that is written here: `G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm`
 2. Create a PostGIS database in postgres and name it **osmosis_ped**
-3. Create the Osmosis schema within the newly created database by running the following script that comes with the Osmosis download: `pgsimple_schema_0.6.sql`.  Do this by using the following command:
+3. Create a schema compatable with Osmosis imports in the new database by running the following script (this file is included in the Osmosis download): `pgsimple_schema_0.6.sql`.  Execute the script by using the following command:
 
-```
+```psql
 psql -d osmosis_ped -U postgres -f "C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
 ```
 
