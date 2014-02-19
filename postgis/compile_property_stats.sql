@@ -208,7 +208,7 @@ INSERT INTO grouped_mf
 	GROUP BY max_zone;
 
 -------------
---Populate final table
+--Populate final tables
 
 DROP TABLE IF EXISTS property_stats CASCADE;
 CREATE TABLE property_stats (

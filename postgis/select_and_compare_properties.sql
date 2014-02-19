@@ -81,22 +81,30 @@ ALTER TABLE comparison_taxlots ADD near_max text DEFAULT 'no';
 UPDATE comparison_taxlots ct SET near_max = 'yes'
 	WHERE ct.gid IN (SELECT ti.gid FROM max_taxlots ti);
 
+--Create a mapping from MAX zones to MAX years.  Note that there are multiple years that map to 
+--the CBD zone, in this case this figure is being mapped to the comparison taxlots, so I'm erring
+--on the side of down playing the growth in the MAX zones by assigning the oldest year to this group
+DROP TABLE IF EXISTS max_year_zone_mapping CASCADE;
+CREATE TABLE max_year_zone_mapping AS
+	SELECT max_zone, min(incpt_year) AS max_year
+	FROM max_stops
+	GROUP BY max_zone;
+
 --Add and populate max_year column based on max_zone fields and max_stops table (indices are added
 --to decrease match time)
 DROP INDEX IF EXISTS tl_compare_max_zone_ix CASCADE;
 CREATE INDEX tl_compare_max_zone_ix ON comparison_taxlots USING BTREE (max_zone);
 
-DROP INDEX IF EXISTS max_stop_zone_ix CASCADE;
-CREATE INDEX max_stop_zone_ix ON max_stops USING BTREE (max_zone);
+DROP INDEX IF EXISTS max_mapping_ix CASCADE;
+CREATE INDEX max_mapping_ix ON max_year_zone_mapping USING BTREE (max_zone);
 
 ALTER TABLE comparison_taxlots DROP COLUMN IF EXISTS max_year CASCADE;
 ALTER TABLE comparison_taxlots ADD max_year int;
 
 UPDATE comparison_taxlots ct SET max_year = (
-	SELECT ms.incpt_year
-	FROM max_stops ms
-	WHERE ms.max_zone = ct.max_zone
-	LIMIT 1);
+	SELECT myz.max_year
+	FROM max_year_zone_mapping myz
+	WHERE myz.max_zone = ct.max_zone);
 
 -----------------------------------------------------------------------------------------------------------------
 --Do the same for Multi-Family Housing Units
@@ -157,9 +165,10 @@ ALTER TABLE comparison_multifam DROP COLUMN IF EXISTS max_year CASCADE;
 ALTER TABLE comparison_multifam ADD max_year int;
 
 UPDATE comparison_multifam cmf SET max_year = (
-	SELECT ms.incpt_year
-	FROM max_stops ms
-	WHERE ms.max_zone = cmf.max_zone
-	LIMIT 1);
+	SELECT myz.max_year
+	FROM max_year_zone_mapping myz
+	WHERE myz.max_zone = cmf.max_zone);
+
+DROP TABLE max_year_zone_mapping CASCADE;
 
 --ran in 702,524 ms on 2/18/14 (definitely benefitted from some caching though)

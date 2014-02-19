@@ -15,11 +15,11 @@
 DROP TABLE IF EXISTS water_and_parks CASCADE;
 CREATE TEMP TABLE water_and_parks AS
 	SELECT geom, 1 AS collapser
-	FROM water
+	FROM water;
 
-INSERT water_and_parks
+INSERT INTO water_and_parks
 	SELECT geom, 1
-	FROM orca 
+	FROM orca;
 
 --Create a single geometry for all park and water features
 DROP TABLE IF EXISTS erase1geom CASCADE;
@@ -32,7 +32,7 @@ CREATE TEMP TABLE erase1geom AS
 DROP TABLE IF EXISTS taxlots_trimmed CASCADE;
 CREATE TABLE taxlots_trimmed AS
 	--The ST_Union function may need to be within a ST_Multi function for this to work properly
-	SELECT COALESCE(ST_Difference(tl.geom, ST_Union(e1g.geom)), tl.geom) as geom, tl.gid, tl.tlid
+	SELECT COALESCE(ST_Difference(tl.geom, ST_Union(e1g.geom)), tl.geom) AS geom, tl.gid, tl.tlid
 	FROM (SELECT
 			FROM taxlot tl
 			LEFT JOIN erase1geom e1g
@@ -45,12 +45,14 @@ CREATE TABLE taxlots_trimmed AS
 DROP TABLE IF EXISTS taxlots_trimmed CASCADE;
 CREATE TABLE taxlots_trimmed AS
 	--Not clear on weather ST_Multi is need here or not
-	SELECT COALESCE(ST_Difference(tl.geom, ST_Multi(ST_Union(wp.geom))), tl.geom) as geom, tl.gid, tl.tlid
+	SELECT COALESCE(ST_Difference(tl.geom, ST_Multi(ST_Union(wp.geom))), tl.geom) AS geom, tl.gid, tl.tlid
 	FROM taxlot tl
 		LEFT JOIN water_and_parks wp
 		ON ST_Intersects(tl.geom, wp.geom)
 	--I'm unsure as to whether or not it is computationally intensice to group tables by geometry, if
 	--that's the case it likely makes sense to take another approach this is not critical to the query
-	GROUP BY tl.geom, tl.gid, tl.tlid
+	--UPDATE: I found that group by geometry only compares bounding boxes, not the full feature, but
+	--still not sure how intensive that action is
+	GROUP BY tl.geom, tl.gid, tl.tlid;
 
 DROP TABLE water_and_parks, erase1geom CASCADE;
