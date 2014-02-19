@@ -154,14 +154,14 @@ select_type = 'NEW_SELECTION'
 where_clause = """ "max_zone" = 'Central Business District' """
 arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type, where_clause)
 
-cbd_max = 'in_memory/cbd_max'
+cbd_max = os.path.join(env.workspace, 'temp/cbd_max.shp')
 arcpy.CopyFeatures_management(max_stop_layer, cbd_max)
 
 # Now select all MAX that are not in the CBD
 select_type = 'SWITCH_SELECTION'
 arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type)
 
-outer_max = 'in_memory/outer_max'
+outer_max = os.path.join(env.workspace, 'temp/outer_max.shp')
 arcpy.CopyFeatures_management(max_stop_layer, outer_max)
 
 # All of the groups created above will be start points in a service area analysis (seeds for isocrones), 
@@ -230,12 +230,12 @@ def generateIsocrones(locations, break_value, isocrones):
 # For noew I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
 # am still working with Alan Lehto to finalize this number
 cbd_max_distance = 3300
-cbd_max_isos = 'in_memory/cbd_max_service_area'
+cbd_max_isos = os.path.join(env.workspace, 'temp/cbd_max_service_area.shp')
 generateIsocrones(cbd_max_set, cbd_max_distance, cbd_max_isos)
 
 # 0.5 miles * 1.25
 outer_max_distance = 3300
-outer_max_isos = 'in_memory/outer_max_service_area'
+outer_max_isos = os.path.join(env.workspace, 'temp/outer_max_service_area.shp')
 generateIsocrones(outer_max_set, outer_max_distance, outer_max_isos)
 
 # after this cursor is deleted the generateIsocrones function will not longer work properly, thus all 
@@ -274,10 +274,10 @@ water = '//gisstore/gis/RLIS/WATER/stm_fill.shp'
 natural_areas = '//gisstore/gis/RLIS/LAND/orca.shp'
 
 # Dissolve water and natural area features into a single geometry features
-water_dissolve = 'in_memory/water_dissolve'
+water_dissolve = os.path.join(env.workspace, 'temp/water_dissolve.shp')
 arcpy.Dissolve_management(water, water_dissolve)
 
-nat_areas_dissolve = 'in_memory/water_and_nat_areas'
+nat_areas_dissolve = os.path.join(env.workspace, 'temp/water_and_nat_areas.shp')
 arcpy.Dissolve_management(natural_areas, nat_areas_dissolve)
 
 # Grab the dissolved water geometry feature
@@ -295,9 +295,6 @@ with arcpy.da.UpdateCursor(nat_areas_dissolve, fields) as cursor:
 # Assign feature class to more appropriately named variable now that it contains the geometry for both
 # water and natural areas
 water_and_nat_areas = nat_areas_dissolve
-
-# Free up memory as this dataset is no longer needed
-arcpy.Delete_management(water_dissolve)
 
 # Erase merged water and parks late
 trimmed_taxlots = os.path.join(env.workspace, 'trimmed_taxlots.shp')
