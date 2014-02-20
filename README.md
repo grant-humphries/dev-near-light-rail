@@ -53,12 +53,13 @@ As of 2/18/2014 this phase of the project can't be automated with arcPy (only Ar
 4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
 5. Leave Z-input as 'None'
 6. Create network attributes based on the python functions here: `network_analyst\foot_permissions.py`
-7.  Select 'No' for the establishment of driving directions
-8.  Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
+7. Select 'No' for the establishment of driving directions
+8.  
+9. Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
 ## Generate Walk Distance Isocrones and Trim Property Data
 
-The heavy lifting of the analysis is in these next two phases and almost all of is automated.  To create walkshed polygons (aka 'isocrones') for each of the MAX stops run `arcpy\create_isocrones_trim_property.py`.  Be sure **change the file path for the project workspace** to the new folder that was created when the MAX stop data was updated at the beginning of this workflow or older data will be overwritten and the wrong inputs will be used.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.  The script named above also erases water bodies, parks and natural areas from properties which they overlap.  This is a very computationally intensive process and took about 38 minutes to complete when I last attempted.
+The heavy lifting of the analysis is in these next two phases and almost all of is automated.  To create walkshed polygons (aka 'isocrones') for each of the MAX stops run `arcpy\create_isocrones_trim_property.py`.  Be sure **change the file path for the project workspace** to the new folder that was created when the MAX stop data was updated at the beginning of this workflow or older data will be overwritten and the wrong inputs will be used.  After the isocrones are created sort them by their area (ascending) and make sure the smallest ones have formed properly.  Sometimes the starting points can snap to island trapping the walker in a tiny areas.  If the walk distance thresholds need to be adjusted from previous iterations of this analysis make those changes with the python script.  The script named above also erases water bodies, parks and natural areas from properties which they overlap.  This is a very computationally intensive process and took about 38 minutes to complete when I last attempted.
 
 ## Select and Compare Property Data and Generate Final Stats
 

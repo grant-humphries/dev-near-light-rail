@@ -82,7 +82,7 @@ max_stop_desc = arcpy.Describe(max_stops)
 # if 'stop_name' field already exists that means this code block has already been run so skip
 if f_name not in [field.name for field in max_stop_desc.fields]:
 	f_type = 'TEXT'
-	arcpy.AddField_management(max_stops, f_name, f_type)
+	arcpy.management.AddField(max_stops, f_name, f_type)
 
 	fields = ['id', 'name', 'stop_name']
 	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
@@ -117,7 +117,7 @@ join_field_mappings.addFieldMap(zone_field_map)
 
 # Determine the max zone that each max stop lies within
 stops_with_zone = os.path.join(env.workspace, 'temp/max_stops_with_zone.shp')
-arcpy.SpatialJoin_analysis(max_stops, max_zones, stops_with_zone, field_mapping=join_field_mappings)
+arcpy.analysis.SpatialJoin(max_stops, max_zones, stops_with_zone, field_mapping=join_field_mappings)
 
 
 # Each MAX line has a decision to build year associated with it and that information needs to be
@@ -125,7 +125,7 @@ arcpy.SpatialJoin_analysis(max_stops, max_zones, stops_with_zone, field_mapping=
 # assigned. 
 f_name = 'incpt_year'
 f_type = 'SHORT'
-arcpy.AddField_management(stops_with_zone, f_name, f_type)
+arcpy.management.AddField(stops_with_zone, f_name, f_type)
 
 # ***Note that stops within the CBD will not all have the same MAX year as stops within
 # that region were not all built at the same time (which is not the case for all other MAX zones)***
@@ -145,39 +145,33 @@ with arcpy.da.UpdateCursor(stops_with_zone, fields) as cursor:
 
 		cursor.updateRow((routes, zone, year))
 
+
 # Create a feature layer so that selections can be made on the data
 max_stop_layer = 'max_stop_layer'
-arcpy.MakeFeatureLayer_management(stops_with_zone, max_stop_layer)
+arcpy.management.MakeFeatureLayer(stops_with_zone, max_stop_layer)
 
 # Select only MAX in the CBD
 select_type = 'NEW_SELECTION'
 where_clause = """ "max_zone" = 'Central Business District' """
-arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type, where_clause)
+arcpy.management.SelectLayerByAttribute(max_stop_layer, select_type, where_clause)
 
 cbd_max = os.path.join(env.workspace, 'temp/cbd_max.shp')
-arcpy.CopyFeatures_management(max_stop_layer, cbd_max)
+arcpy.management.CopyFeatures(max_stop_layer, cbd_max)
 
 # Now select all MAX that are not in the CBD
 select_type = 'SWITCH_SELECTION'
-arcpy.SelectLayerByAttribute_management(max_stop_layer, select_type)
+arcpy.management.SelectLayerByAttribute(max_stop_layer, select_type)
 
 outer_max = os.path.join(env.workspace, 'temp/outer_max.shp')
-arcpy.CopyFeatures_management(max_stop_layer, outer_max)
-
-# All of the groups created above will be start points in a service area analysis (seeds for isocrones), 
-# but in order to be loaded into service area tool they must be in the form of an object called a Feature Set
-cbd_max_set = arcpy.FeatureSet()
-cbd_max_set.load(cbd_max)
-
-outer_max_set = arcpy.FeatureSet()
-outer_max_set.load(outer_max)
+arcpy.management.CopyFeatures(max_stop_layer, outer_max)
 
 # Create a new feature class to store all of the isochrones that will be created
-all_isocrones = os.path.join(env.workspace, 'rail_stop_isocrones.shp')
+final_isocrones = os.path.join(env.workspace, 'max_stop_isocrones.shp')
 geom_type = 'POLYGON'
 epsg = arcpy.SpatialReference(2913)
-arcpy.CreateFeatureclass_management(os.path.dirname(all_isocrones), os.path.basename(all_isocrones), 
+arcpy.management.CreateFeatureclass(os.path.dirname(final_isocrones), os.path.basename(final_isocrones), 
 									geom_type, spatial_reference=epsg)
+
 
 # Add all fields that are needed in the new feature class, and drop the 'Id' field that is created
 # by default when a new fc w/ no additional fields in created
@@ -190,69 +184,95 @@ for f_name in field_names:
 	elif f_name == 'walk_dist':
 		f_type = 'DOUBLE'
 	
-	arcpy.AddField_management(all_isocrones, f_name, f_type)
+	arcpy.management.AddField(final_isocrones, f_name, f_type)
 
 drop_field = 'Id'
-arcpy.DeleteField_management(all_isocrones, drop_field)
+arcpy.management.DeleteField(final_isocrones, drop_field)
 
 # create an insert cursor to populate the new feature class with the isocrones that will be generated
 i_fields = ['SHAPE@', 'tm_id', 'walk_dist']
-i_cursor = arcpy.da.InsertCursor(all_isocrones, i_fields) 
+i_cursor = arcpy.da.InsertCursor(final_isocrones, i_fields) 
 
-# Set static parameters for service area analysis (isocrone generation)
-break_units = 'FEET'
+# Create and configure a service area layer
 osm_network = os.path.join(env.workspace, 'osm_foot_ND.nd')
+service_area_name = 'service_area_layer'
+impedance_attribute = 'Length'
+travel_from_to = 'TRAVEL_TO'
 permissions = 'foot_permissions'
-exclude_restricted = 'EXCLUDE'
-polygon_overlap = 'DISKS'
-# polygon trim is critical this cuts out area of the polygons where no traversable features exist for at lease
-# the given distance, 100 meters is the default and seems to work well
-polygon_trim = '100 METERS'
-polygon_simp = '5 FEET'
+service_area_layer = arcpy.na.MakeServiceAreaLayer(osm_network, service_area_name, 
+								impedance_attribute, travel_from_to, 
+								restriction_attribute_name=permissions).getOutput(0)
 
-# This function creates isocrones for the input locations and adds them to a new feature class, each time 
-# function is run the new isocrones are added to the same feature class
-def generateIsocrones(locations, break_value, isocrones):
-	arcpy.na.GenerateServiceAreas(locations, break_value, break_units, osm_network, isocrones,
-									Restrictions=permissions, 
-									Exclude_Restricted_Portions_of_the_Network=exclude_restricted,
-									Polygon_Overlap_Type=polygon_overlap, Polygon_Trim_Distance=polygon_trim,
-									Polygon_Simplification_Tolerance=polygon_simp)
+# Within the service area layer there are several layers where things are stored such as facilities,
+# polygons, and barriers.  Grab the facilities and polygons sublayers and assign them to a variables
+sa_sublayer_dict = arcpy.na.GetNAClassNames(service_area_layer)
 
-	s_fields = ['SHAPE@', 'Name']
-	with arcpy.da.SearchCursor(isocrones, s_fields) as cursor:
+sa_facilities = sa_sublayer_dict['Facilities']
+sa_isocrones = sa_sublayer_dict['SAPolygons']
+
+# Will be used to prevent duplicates from being added to final isocrones
+tm_id_list = []
+
+def generateIsocrones(locations, break_value):
+	# Set the break distance for this batch of stops
+	solver_props = arcpy.na.GetSolverProperties(service_area_layer)
+	solver_props.defaultBreaks = break_value
+
+	# Add the stops to the service area (sub)layer
+	exclude_for_snapping = 'EXCLUDE'
+	clear_other_stops = 'CLEAR'
+	# Service area locations must be stored in the facilities sublayer
+	arcpy.na.AddLocations(service_area_layer, sa_facilities, 
+							locations, append=clear_other_stops,
+							exclude_restricted_elements=exclude_for_snapping)
+
+	# Generate the isocrones for this batch of stops, the output will automatically go to the 
+	# 'SAPolygons' sub layer of the service area layer which has been assigned to the variable
+	# 'sa_isocrones' above
+	arcpy.na.Solve(service_area_layer)
+
+	# Grab the needed fields from the isocrones and write the to the feature class created to house
+	# them.  The features will only be added if their tm_id is not in the final isocrones fc
+	fields = ['SHAPE@', 'Name']
+	with arcpy.da.SearchCursor(sa_isocrones, fields) as cursor:
 		for geom, output_name in cursor:
-			tm_id = re.sub(' : 0 - ' + str(break_value) + '$', '', output_name)
-			i_cursor.insertRow((geom, tm_id, break_value))
+			print geom
+			print output_name
+			iso_attributes = re.split(' : 0 - ', output_name)
+			tm_id = iso_attributes[0]
+			break_value = int(iso_attributes[1])
 
+			if tm_id not in tm_id_list:
+				i_cursor.insertRow((geom, tm_id, break_value))
+
+			tm_id_list.append(tm_id)
 
 # Set variable parameters specific to each set of isocrones:
 # For noew I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
 # am still working with Alan Lehto to finalize this number
 cbd_max_distance = 3300
-cbd_max_isos = os.path.join(env.workspace, 'temp/cbd_max_service_area.shp')
-generateIsocrones(cbd_max_set, cbd_max_distance, cbd_max_isos)
+generateIsocrones(cbd_max, cbd_max_distance)
 
 # 0.5 miles * 1.25
 outer_max_distance = 3300
-outer_max_isos = os.path.join(env.workspace, 'temp/outer_max_service_area.shp')
-generateIsocrones(outer_max_set, outer_max_distance, outer_max_isos)
+generateIsocrones(outer_max, outer_max_distance)
 
-# after this cursor is deleted the generateIsocrones function will not longer work properly, thus all 
-# calls must be made before this
+# Cursor should be discarded now that it is no longer needed (can cause problems if not done)
 del i_cursor
 
+print 'test7'
 # Get value attributes from the original rail stops data set and add it to the new isocrones
-# feature class, matching corresponding features
+# feature class, matching corresponding features.  Recall that the tm_id field has been copied to
+# 'name' field and casted to a string
 fields = ['name', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
 	for tm_id, stop_id, routes, zone, year in cursor:
 		rail_stop_dict[tm_id] = (tm_id, stop_id, routes.strip(), zone, year)
 
-# replace the first entry in fields with rail_stop, the others neccessarily stay the same
+# Join selected attributes from the MAX stop feature class to the isocrones
 fields = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
-with arcpy.da.UpdateCursor(all_isocrones, fields) as cursor:
+with arcpy.da.UpdateCursor(final_isocrones, fields) as cursor:
 	for tm_id, stop_id, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[tm_id])
 
@@ -275,10 +295,10 @@ natural_areas = '//gisstore/gis/RLIS/LAND/orca.shp'
 
 # Dissolve water and natural area features into a single geometry features
 water_dissolve = os.path.join(env.workspace, 'temp/water_dissolve.shp')
-arcpy.Dissolve_management(water, water_dissolve)
+arcpy.management.Dissolve(water, water_dissolve)
 
 nat_areas_dissolve = os.path.join(env.workspace, 'temp/water_and_nat_areas.shp')
-arcpy.Dissolve_management(natural_areas, nat_areas_dissolve)
+arcpy.management.Dissolve(natural_areas, nat_areas_dissolve)
 
 # Grab the dissolved water geometry feature
 fields = ['OID@', 'SHAPE@']
@@ -296,11 +316,13 @@ with arcpy.da.UpdateCursor(nat_areas_dissolve, fields) as cursor:
 # water and natural areas
 water_and_nat_areas = nat_areas_dissolve
 
-# Erase merged water and parks late
+# Erase merged water and parks from property data
+# Consider try multi-processing for this step at some point as it is very computationally intensive:
+# http://blogs.esri.com/esri/arcgis/2011/08/29/multiprocessing/
 trimmed_taxlots = os.path.join(env.workspace, 'trimmed_taxlots.shp')
-arcpy.Erase_analysis(taxlots, water_and_nat_areas, trimmed_taxlots)
+arcpy.analysis.Erase(taxlots, water_and_nat_areas, trimmed_taxlots)
 
 trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
-arcpy.Erase_analysis(multi_family, water_and_nat_areas, trimmed_multifam)
+arcpy.analysis.Erase(multi_family, water_and_nat_areas, trimmed_multifam)
 
 timing.endlog()
