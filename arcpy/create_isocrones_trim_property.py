@@ -323,5 +323,4 @@ trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
 arcpy.analysis.Erase(multi_family, water_and_nat_areas, trimmed_multifam)
 
 timing.endlog()
-
-# second phase of script ran in 39:41 on 2/19/14
+# second phase ran in 39:41 on 2/19/14
