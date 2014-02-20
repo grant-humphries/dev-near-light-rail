@@ -1,8 +1,12 @@
 # First set the password for the postgres database so that it doesn't have to be repeatedly entered
-set pgpassword=**********
+#set pgpassword=**********
+# commenting this out for now so my password isn't on github
+
+# **NOTE:** The file path for the project data need to be updated for each new iteration of the
+# project. To do this find and replace '2014_02' with the name of the current folder 'date' folder 
 
 # PROJECT DATA (these were created in earlier phases of the project, most are modified 
-# versions of RLIS or TriMet data)
+# versions of RLIS or TriMet data).  
 
 # MAX Stops 
 shp2pgsql -I -s 2913 //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/max_stops.shp max_stops | psql -U postgres -d transit_dev

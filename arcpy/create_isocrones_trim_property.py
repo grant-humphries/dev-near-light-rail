@@ -19,9 +19,12 @@ env.addOutputsToMap = True
 # BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
 env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02'
 
-# Create a temp folder to hold intermediate datasets if it doesn't already exist
-if not os.path.exists(os.path.join(env.workspace, 'temp')):
-	os.makedirs(os.path.join(env.workspace, 'temp'))
+# Create a 'temp' folder to hold intermediate datasets, and a 'csv' folder to hold spreadsheet (later
+# in the project) if they don't already exist
+new_folders = ['temp', 'csv']
+for folder in new_folders:
+	if not os.path.exists(os.path.join(env.workspace, folder)):
+		os.makedirs(os.path.join(env.workspace, folder))
 
 # This dataset should be updated anytime there is a change to any of the MAX stops (it comes table
 # stop_ext on the server trimet.maps5.org.  With new data be sure that none of the stops are snapping
