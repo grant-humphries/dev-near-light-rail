@@ -277,11 +277,13 @@ with arcpy.da.UpdateCursor(final_isocrones, fields) as cursor:
 # keeps track of the run time of the script
 timing.log('Isocrones created')
 
+# ran in 9:15 on 2/19/14
+
 #-----------------------------------------------------------------------------------------------------
 # Trim regions covered by water bodies and natural areas (including parks) from properties, the area of 
 # these taxlots will be used for normalization in statistics resultant from this project
-print ''
-print 'Beginning trimming of property data'
+
+timing.log('Property trimming beginning')
 
 taxlots = '//gisstore/gis/RLIS/TAXLOTS/taxlots.shp'
 multi_family = '//gisstore/gis/RLIS/LAND/multifamily_housing_inventory.shp'
@@ -289,7 +291,7 @@ multi_family = '//gisstore/gis/RLIS/LAND/multifamily_housing_inventory.shp'
 water = '//gisstore/gis/RLIS/WATER/stm_fill.shp'
 natural_areas = '//gisstore/gis/RLIS/LAND/orca.shp'
 
-# Dissolve water and natural area features into a single geometry features
+# Dissolve water and natural area feature classes into a single geometry for each group
 water_dissolve = os.path.join(env.workspace, 'temp/water_dissolve.shp')
 arcpy.management.Dissolve(water, water_dissolve)
 
@@ -308,11 +310,10 @@ with arcpy.da.UpdateCursor(nat_areas_dissolve, fields) as cursor:
 		geom = geom.union(water_geom)
 		cursor.updateRow((oid, geom))
 
-# Assign feature class to more appropriately named variable now that it contains the geometry for both
-# water and natural areas
+# Assign the parks/water feature class to more appropriately named variable
 water_and_nat_areas = nat_areas_dissolve
 
-# Erase merged water and parks from property data
+# Erase merged parks/water features from property data
 # Consider try multi-processing for this step at some point as it is very computationally intensive:
 # http://blogs.esri.com/esri/arcgis/2011/08/29/multiprocessing/
 trimmed_taxlots = os.path.join(env.workspace, 'trimmed_taxlots.shp')
@@ -322,3 +323,5 @@ trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
 arcpy.analysis.Erase(multi_family, water_and_nat_areas, trimmed_multifam)
 
 timing.endlog()
+
+# second phase of script ran in 39:41 on 2/19/14

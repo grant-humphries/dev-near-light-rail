@@ -55,7 +55,8 @@ As of 2/18/2014 this phase of the project can't be automated with arcPy (only Ar
 6. Create network attributes based on the python functions here: `network_analyst\foot_permissions.py`
 7. Select 'No' for the establishment of driving directions
 8.  
-9. Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
+
+Plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
 ## Generate Walk Distance Isocrones and Trim Property Data
 
