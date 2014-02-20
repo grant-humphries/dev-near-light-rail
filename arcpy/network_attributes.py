@@ -40,9 +40,9 @@ walkMinutes(!Shape!)
 # NOTE: Building the network dataset may not work if you set the units for the walk length attribute
 # to minutes, or if you set it at all, this seems to be a bug.  I work around that I have found is to 
 # leave the units for walk distance undefined in the wizard, then go back and open the network dataset
-#properties in the arc catalog window and assign them there and rebuild the network
+# properties in the arc catalog window and assign them there and rebuild the network
 
+# UPDATE 02/2014: leading spaces were not present on this iteration
 # Also the PostGIS streets and trails layer is being saved as a shape file by QGIS is currently adding 
 # leading spaces in front of the attributes values, these must be removed for the functions above to work
 # (use python 'field'.strip() in field calculator)
-# UPDATE: leading spaces were not present on 2/2014 iteration
