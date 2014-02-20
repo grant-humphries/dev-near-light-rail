@@ -9,12 +9,13 @@ import timing
 import arcpy
 from arcpy import env
 
-# Check out the Network Analyst extension license
+# Check out the Network Analyst extension
 arcpy.CheckOutExtension("Network")
 
 # Allow shapefiles to be overwritten and set the current workspace
 env.overwriteOutput = True
 env.addOutputsToMap = True
+
 # BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
 env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02'
 
@@ -22,10 +23,9 @@ env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail
 if not os.path.exists(os.path.join(env.workspace, 'temp')):
 	os.makedirs(os.path.join(env.workspace, 'temp'))
 
-# This dataset should be updated anytime there is a change to any of the MAX stops, such as when the 
-# orange line is completed, grab the data from maps5 for most up-to-date product and ensure the schema
-# matches what is being called upon in the script.  Also be sure that none of the stops are snapping to the
-# sky bridges in downtown as this has been an issue in the past
+# This dataset should be updated anytime there is a change to any of the MAX stops (it comes table
+# stop_ext on the server trimet.maps5.org.  With new data be sure that none of the stops are snapping
+# to the sky bridges in downtown as this has been an issue in the past
 max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
 
@@ -72,7 +72,7 @@ if new_max_id not in id_list:
 max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
 # Only a field called 'name' will be retained when locations are loaded into service area analysis as the
-# MAXstops will be.  In that field I need unique identifiers so attributes from this data can be properly
+# MAX stops will be.  In that field I need unique identifiers so attributes from this data can be properly
 # linked to the network analyst output
 
 # Move the values in 'name' to a new field to preserve them, then overwrite the original with unique id
@@ -121,8 +121,8 @@ arcpy.analysis.SpatialJoin(max_stops, max_zones, stops_with_zone, field_mapping=
 
 
 # Each MAX line has a decision to build year associated with it and that information needs to be
-# transferred to the stops.  If a MAX stop serves multiple lines year from the oldest line will be 
-# assigned. 
+# transferred to the stops.  If a MAX stop serves multiple lines the year from the oldest line 
+# will be assigned. 
 f_name = 'incpt_year'
 f_type = 'SHORT'
 arcpy.management.AddField(stops_with_zone, f_name, f_type)
@@ -165,16 +165,16 @@ arcpy.management.SelectLayerByAttribute(max_stop_layer, select_type)
 outer_max = os.path.join(env.workspace, 'temp/outer_max.shp')
 arcpy.management.CopyFeatures(max_stop_layer, outer_max)
 
-# Create a new feature class to store all of the isochrones that will be created
+
+# Create a new feature class to store all of the isocrones that will be created
 final_isocrones = os.path.join(env.workspace, 'max_stop_isocrones.shp')
 geom_type = 'POLYGON'
 epsg = arcpy.SpatialReference(2913)
 arcpy.management.CreateFeatureclass(os.path.dirname(final_isocrones), os.path.basename(final_isocrones), 
 									geom_type, spatial_reference=epsg)
 
-
-# Add all fields that are needed in the new feature class, and drop the 'Id' field that is created
-# by default when a new fc w/ no additional fields in created
+# Add all fields that are needed in the new feature class, and drop the 'Id' field that exists
+# by default
 field_names = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
 	if f_name in ('stop_id', 'incpt_year'):
@@ -189,7 +189,7 @@ for f_name in field_names:
 drop_field = 'Id'
 arcpy.management.DeleteField(final_isocrones, drop_field)
 
-# create an insert cursor to populate the new feature class with the isocrones that will be generated
+# create an insert cursor to populate the new feature class
 i_fields = ['SHAPE@', 'tm_id', 'walk_dist']
 i_cursor = arcpy.da.InsertCursor(final_isocrones, i_fields) 
 
@@ -203,14 +203,14 @@ service_area_layer = arcpy.na.MakeServiceAreaLayer(osm_network, service_area_nam
 								impedance_attribute, travel_from_to, 
 								restriction_attribute_name=permissions).getOutput(0)
 
-# Within the service area layer there are several layers where things are stored such as facilities,
-# polygons, and barriers.  Grab the facilities and polygons sublayers and assign them to a variables
+# Within the service area layer there are several sub-layers where things are stored such as facilities,
+# polygons, and barriers.  Grab the facilities and polygons sublayers and assign them to variables
 sa_sublayer_dict = arcpy.na.GetNAClassNames(service_area_layer)
 
 sa_facilities = sa_sublayer_dict['Facilities']
 sa_isocrones = sa_sublayer_dict['SAPolygons']
 
-# Will be used to prevent duplicates from being added to final isocrones
+# Used to keep track of the isocrones that have beeb added to the new feature class
 tm_id_list = []
 
 def generateIsocrones(locations, break_value):
@@ -228,27 +228,25 @@ def generateIsocrones(locations, break_value):
 
 	# Generate the isocrones for this batch of stops, the output will automatically go to the 
 	# 'SAPolygons' sub layer of the service area layer which has been assigned to the variable
-	# 'sa_isocrones' above
+	# 'sa_isocrones'
 	arcpy.na.Solve(service_area_layer)
 
-	# Grab the needed fields from the isocrones and write the to the feature class created to house
+	# Grab the needed fields from the isocrones and write them to the feature class created to house
 	# them.  The features will only be added if their tm_id is not in the final isocrones fc
 	fields = ['SHAPE@', 'Name']
 	with arcpy.da.SearchCursor(sa_isocrones, fields) as cursor:
 		for geom, output_name in cursor:
-			print geom
-			print output_name
 			iso_attributes = re.split(' : 0 - ', output_name)
+			
 			tm_id = iso_attributes[0]
 			break_value = int(iso_attributes[1])
 
 			if tm_id not in tm_id_list:
 				i_cursor.insertRow((geom, tm_id, break_value))
+				tm_id_list.append(tm_id)
 
-			tm_id_list.append(tm_id)
-
-# Set variable parameters specific to each set of isocrones:
-# For noew I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
+# Set parameters specific to each set of isocrones:
+# For now I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
 # am still working with Alan Lehto to finalize this number
 cbd_max_distance = 3300
 generateIsocrones(cbd_max, cbd_max_distance)
@@ -257,20 +255,18 @@ generateIsocrones(cbd_max, cbd_max_distance)
 outer_max_distance = 3300
 generateIsocrones(outer_max, outer_max_distance)
 
-# Cursor should be discarded now that it is no longer needed (can cause problems if not done)
+# Cursor should be discarded now that it is no longer needed (can cause execution problems if not done)
 del i_cursor
 
-print 'test7'
-# Get value attributes from the original rail stops data set and add it to the new isocrones
-# feature class, matching corresponding features.  Recall that the tm_id field has been copied to
-# 'name' field and casted to a string
+# Get value attributes from the original max stops data and add it to the new isocrones feature class, 
+# matching corresponding features.  Recall that the tm_id field has been copied to 'name' field and 
+# casted to string
 fields = ['name', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
 	for tm_id, stop_id, routes, zone, year in cursor:
 		rail_stop_dict[tm_id] = (tm_id, stop_id, routes.strip(), zone, year)
 
-# Join selected attributes from the MAX stop feature class to the isocrones
 fields = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isocrones, fields) as cursor:
 	for tm_id, stop_id, routes, zone, year in cursor:
