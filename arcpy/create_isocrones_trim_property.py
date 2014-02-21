@@ -42,7 +42,7 @@ with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 # I think this is because of the negative numbers, but I'm dropping the fields 'lon' and 'lat' to
 # resolve this situation
 drop_fields = ['lon', 'lat']
-arcpy.management.DeleteField(final_isocrones, drop_fields)
+arcpy.management.DeleteField(max_stops, drop_fields)
 
 #-----------------------------------------------------------------------------------------------------
 # This section can be removed once the orange line stops are added to maps5
@@ -80,9 +80,7 @@ if new_max_id not in id_list:
 
 	del i_cursor
 
-
 #-----------------------------------------------------------------------------------------------------
-
 
 # Only a field called 'name' will be retained when locations are loaded into service area analysis as the
 # MAX stops will be.  In that field I need unique identifiers so attributes from this data can be properly
@@ -148,12 +146,12 @@ with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 # will be assigned. 
 f_name = 'incpt_year'
 f_type = 'SHORT'
-arcpy.management.AddField(stops_with_zone, f_name, f_type)
+arcpy.management.AddField(max_stops, f_name, f_type)
 
 # ***Note that stops within the CBD will not all have the same MAX year as stops within
 # that region were not all built at the same time (which is not the case for all other MAX zones)***
 fields = ['routes', 'max_zone', 'incpt_year']
-with arcpy.da.UpdateCursor(stops_with_zone, fields) as cursor:
+with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 	for routes, zone, year in cursor:
 		if ':MAX Blue Line:' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
 			year = 1980
@@ -171,7 +169,7 @@ with arcpy.da.UpdateCursor(stops_with_zone, fields) as cursor:
 
 # Create a feature layer so that selections can be made on the data
 max_stop_layer = 'max_stop_layer'
-arcpy.management.MakeFeatureLayer(stops_with_zone, max_stop_layer)
+arcpy.management.MakeFeatureLayer(max_stops, max_stop_layer)
 
 # Select only MAX in the CBD
 select_type = 'NEW_SELECTION'
@@ -286,7 +284,7 @@ del i_cursor
 # casted to string
 fields = ['name', 'stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
-with arcpy.da.SearchCursor(stops_with_zone, fields) as cursor:
+with arcpy.da.SearchCursor(max_stops, fields) as cursor:
 	for tm_id, stop_id, routes, zone, year in cursor:
 		rail_stop_dict[tm_id] = (tm_id, stop_id, routes.strip(), zone, year)
 

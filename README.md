@@ -16,7 +16,7 @@ It's good practice to update this data each time this project is refreshed to en
  ```
  pgsql2shp -k -h maps2.trimet.org -u tmpublic -P tmpublic -f G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\max_stops.shp trimet current.stop_ext
  ```
- The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to replace YYYY_MM in that path with the name of the new folder.
+ The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to **replace YYYY_MM in the path** with the name of the new folder.
  
 Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isocrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
 
@@ -83,14 +83,14 @@ This final phase of the project selects taxlots and multi-family units that are 
     
    **RLIS data**: City Boundaries, Urban Growth Boundary
     * Set the password for your PostGIS data base in the cygwin terminal with the following command `set pgpassword=********`
-    * Within the shell script `postgis/load_shapefiles.sh` change the subfolder in the file path for the 'project datasets' that is a dare in the format `YYYY_MM` to the name of the folder that was created for the current iteration.
+    * Within the shell script `postgis/load_shapefiles.sh` change the subfolder in the file path for the 'project datasets' from the `YYYY_MM` placeholder to the name of the folder that was created for the current iteration.  However don't commit this back to github to avoid inadvertant use of old data in future runs of this project.
     * Run the the afore mentioned script with cygwin.  The import commands within that file follow this template:
     
     ```bash
-    shp2pgsql -I -s <SRID> <PATH/TO/SHAPEFILE> <SCHEMA>.<DBTABLE> | psql -U <USERNAME> -d <DATABASE>
+    shp2pgsql -s -d -I <SRID> <PATH/TO/SHAPEFILE> <SCHEMA>.<DBTABLE> | psql -U <USERNAME> -d <DATABASE>
     ```
 
-    The -I parameter creates a spatial index on the geometry column an the -s parameter sets the SRID (spatial reference) using an EPSG code.
+    The -s parameter sets the SRID (spatial reference) using an EPSG code, -d deletes the table if it already existsm, and -I creates a spatial index on the geometry column. 
 
 3. Run `postgis/select_and_compare_properties.sql` in PgAdmin3 (which is a PostGreSQL interface) or via the terminal or command prompt.
 4. Execute `postgis/compile_property_stats.sql` in PgAdmin.
@@ -98,10 +98,10 @@ This final phase of the project selects taxlots and multi-family units that are 
     
     ```
     psql -d transit_dev -U postgres
-    \copy pres_stats_w_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\2014_02\csv\max_dev_stats_w_near_props.csv csv header
-    \copy pres_stats_minus_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\2014_02\csv\max_dev_stats_minus_near_props.csv csv header
+    \copy pres_stats_w_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_w_near_props.csv csv header
+    \copy pres_stats_minus_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_minus_near_props.csv csv header
     ```
-    Again recall that the 'date' folder must be updated to that of the current iteration
+    Again recall that the YYYY_MM part of the path must be updated with name of the folder tied to the current iteration.
 
 6. With Excel or OpenOffice save the csv's as .xlsx files and format them for presentation.
 7. Add metadata and any needed explanation of the statistics to the spreadsheets.
