@@ -26,11 +26,23 @@ for folder in new_folders:
 	if not os.path.exists(os.path.join(env.workspace, folder)):
 		os.makedirs(os.path.join(env.workspace, folder))
 
-# This dataset should be updated anytime there is a change to any of the MAX stops (it comes table
-# stop_ext on the server trimet.maps5.org.  With new data be sure that none of the stops are snapping
-# to the sky bridges in downtown as this has been an issue in the past
+# **NOTE:** This feature class is all trimet stops, not just MAX stops when it is initially added, 
+# this will be corrected in the next step.  This shapefile is derived from the table current.stop_ext
+# in the trimet database on the trimet.maps2.org.
 max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
+# Erase all non-MAX stops from the transit stops data
+fields = ['OID@', 'type']
+with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
+	for oid, stop_type in cursor:
+		if int(stop_type) != 5:
+			cursor.deleteRow()
+
+# The 'lon' field is giving me trouble when I try to import this shapefile back into a PostGIS db
+# I think this is because of the negative numbers, but I'm dropping the fields 'lon' and 'lat' to
+# resolve this situation
+drop_fields = ['lon', 'lat']
+arcpy.management.DeleteField(final_isocrones, drop_fields)
 
 #-----------------------------------------------------------------------------------------------------
 # This section can be removed once the orange line stops are added to maps5
@@ -71,8 +83,6 @@ if new_max_id not in id_list:
 
 #-----------------------------------------------------------------------------------------------------
 
-# These areas will be used to divide the stops into tabulation groups
-max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
 # Only a field called 'name' will be retained when locations are loaded into service area analysis as the
 # MAX stops will be.  In that field I need unique identifiers so attributes from this data can be properly
@@ -94,33 +104,43 @@ if f_name not in [field.name for field in max_stop_desc.fields]:
 			name = str(int(tm_id))
 			cursor.updateRow((tm_id, name, stop_name))
 
-# An attribute needs to be added to the max stops layer that indicates which 'MAX zone' it falls within.
-# This will be done with a spatial join, but in order to properly add a field that will contain that
-# information a field mapping must be set up.
 
-# Create a Field Mapp*ings* object and add all fields from the max stops fc
-join_field_mappings = arcpy.FieldMappings()
-join_field_mappings.addTable(max_stops)
+# An attribute needs to be added to the max stops layer that indicates which 'MAX zone' it falls 
+# within, the max_zone feature class below is the source of that determination.  Whichever zone
+# a stop falls within it is assigned.
 
-# Create a Field Map object and load the 'name' field from the max zones fc 
-mz_map_field = 'name'
-zone_field_map = arcpy.FieldMap()
-zone_field_map.addInputField(max_zones, mz_map_field)
+# These areas are used to divide the stops into tabulation groups
+max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
-# Get the output field's properties as a field object
-zone_field = zone_field_map.outputField
- 
-# Rename the field and pass the updated field object back into the field map
-zone_field.name = 'max_zone'
-zone_field.aliasName = 'max_zone'
-zone_field_map.outputField = zone_field
+# Create a mapping form zone object id's to their names
+max_zone_dict = {}
+fields = ['OID@', 'name']
+with arcpy.da.SearchCursor(max_zones, fields) as cursor:
+	for oid, name in cursor:
+		max_zone_dict[oid] = name
 
-# Add the field map to the field mappings
-join_field_mappings.addFieldMap(zone_field_map)
+# Find the nearest zone to each stop
+stop_zone_n_table = os.path.join(env.workspace, 'temp/stop_zone_near_table.dbf')
+arcpy.analysis.GenerateNearTable(max_stops, max_zones, stop_zone_n_table)
 
-# Determine the max zone that each max stop lies within
-stops_with_zone = os.path.join(env.workspace, 'temp/max_stops_with_zone.shp')
-arcpy.analysis.SpatialJoin(max_stops, max_zones, stops_with_zone, field_mapping=join_field_mappings)
+# Create a mapping from stop oid's to zone oid's
+stop2zone_dict = {}
+fields = ['IN_FID', 'NEAR_FID']
+with arcpy.da.SearchCursor(stop_zone_n_table, fields) as cursor:
+	for stop_oid, zone_oid in cursor:
+		stop2zone_dict[stop_oid] = zone_oid
+
+# Add a field to store the zone name on the stops fc and populate it
+f_name = 'max_zone'
+f_type = 'TEXT'
+arcpy.management.AddField(max_stops, f_name, f_type)
+
+fields = ['OID@', 'max_zone']
+with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
+	for oid, zone in cursor:
+		zone = max_zone_dict[stop2zone_dict[oid]]
+
+		cursor.updateRow((oid, zone))
 
 
 # Each MAX line has a decision to build year associated with it and that information needs to be

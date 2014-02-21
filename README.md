@@ -10,18 +10,15 @@ Follow the steps below to refresh the data and generate a current version of the
 
 It's good practice to update this data each time this project is refreshed to ensure any changes to the MAX network are captured
 
-1. Connect to map server **maps5.trimet.org** (or any other TriMet map server with PostGIS databases) with QGIS.
-2. Load the table **current.stop_ext**.
-3. Apply the following definition query to the data in order to filter out all non-MAX transit stops (but also be sure that this is what is desired for the current iteration of the project, there has been some discussion of adding frequent service bus and the streetcar has been analyzed in the past):
-
-    ```sql
-    SELECT * FROM current.stop_ext WHERE "type" = 5
-    ```
-
-    this query actually must be shorted to `"type" = 5` to be used in QGIS as it only interprets the where clause
-
-4. Create a new sub-folder at the following location: `//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` the folder should indicate the date of the current iteration and be in the following format `YYYY_MM`.
-5. Save the stops data as a shapefile with the projection Oregon State Plane North (epsg: **2913**) in the newly created folder and give it the name `max_stops.shp`.
+1. In the folder `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` create a new sub-folder based on the current month and year in the format `YYYY_MM`.  All new data created during this iteration of the project will be stored here.
+2. In the command prompt use the following code to connect to **trimet** database on **maps2.trimet.org** (or any other TriMet map server with PostGIS databases) and convert the data in the table **current.stop_ext** into a shapefile called `max_stops.shp` that will be saved in the folder created in the previous step.
+ 
+ ```
+ pgsql2shp -k -h maps2.trimet.org -u tmpublic -P tmpublic -f G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\max_stops.shp trimet current.stop_ext
+ ```
+ The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to replace YYYY_MM in that path with the name of the new folder.
+ 
+Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isocrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
 
 ## Update OSM Data and Import into PostGIS with Osmosis
 
@@ -29,7 +26,7 @@ Instruction outlines below were derived from a blog post found [here](http://ski
 
 1. Refresh the OSM data stored here: `//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/osm_data/or-wa.osm` with the nightly download that is written here: `//gisstore/gis/PUBLIC/OpenStreetMap/data/osm/or-wa.osm`
 2. Create a PostGIS database in postgres and name it **osmosis_ped**
-3. Create a schema compatable with Osmosis imports in the new database by running the following script : `pgsimple_schema_0.6.sql` (this file is included in the Osmosis download).  Execute the script in the Cygwin terminal by using the following command:
+3. Create a schema compatable with Osmosis imports in the new database by running the following script : `pgsimple_schema_0.6.sql` (this file is included in the Osmosis download).  Execute the script in the cygwin terminal by using the following command:
 
     ```bash
     psql -d osmosis_ped -U postgres -f "C:/Program Files (x86)/Osmosis/script/pgsimple_schema_0.6.sql"
@@ -37,7 +34,7 @@ Instruction outlines below were derived from a blog post found [here](http://ski
     It may also be neccessary to set the password for the postgres user using the command `SET pgpassword=xxx`
 
 4. Import the OpenStreetMap data into the database via Osmosis by pasting the command stored here `osmosis/osmosis_command.sh` (within this repo) into the command prompt.
-5. Turn the deconstructed OSM data (this is the format that Osmosis produces) back into line segments by running the script stored here: `osmosis/compose_trails.sql`.  Anything that is not a street or trails has been filtered out by Osmosis.  Use the command below to run the script from the the (Cygwin) terminal:
+5. Turn the deconstructed OSM data (this is the format that Osmosis produces) back into line segments by running the script stored here: `osmosis/compose_trails.sql`.  Anything that is not a street or trails has been filtered out by Osmosis.  Use the command below to run the script from the the (cygwin) terminal:
 
     ```bash
     psql -d osmosis_ped -U postgres -f //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis/compose_trails.sql
@@ -85,21 +82,21 @@ This final phase of the project selects taxlots and multi-family units that are 
    **TriMet data**: TriMet Service District Boundary
     
    **RLIS data**: City Boundaries, Urban Growth Boundary
-    * Set the password for your PostGIS data base in the Cygwin terminal with the following command `set pgpassword=********`
+    * Set the password for your PostGIS data base in the cygwin terminal with the following command `set pgpassword=********`
     * Within the shell script `postgis/load_shapefiles.sh` change the subfolder in the file path for the 'project datasets' that is a dare in the format `YYYY_MM` to the name of the folder that was created for the current iteration.
-    * Run the the afore mentioned script with Cygwin.  The import commands within that file follow this template:
+    * Run the the afore mentioned script with cygwin.  The import commands within that file follow this template:
     
     ```bash
     shp2pgsql -I -s <SRID> <PATH/TO/SHAPEFILE> <SCHEMA>.<DBTABLE> | psql -U <USERNAME> -d <DATABASE>
     ```
 
-    The -I parameter creates a spatial index on the geometry column an the -s parameter reprojects the shapefile to the spatial reference projection indicated.
+    The -I parameter creates a spatial index on the geometry column an the -s parameter sets the SRID (spatial reference) using an EPSG code.
 
 3. Run `postgis/select_and_compare_properties.sql` in PgAdmin3 (which is a PostGreSQL interface) or via the terminal or command prompt.
 4. Execute `postgis/compile_property_stats.sql` in PgAdmin.
 5. In the command prompt (haven't got this working the teminal yet, but plan to do so) use the commands below to write the final stats tables created by the by the script above to csv's:
     
-    ```bash
+    ```
     psql -d transit_dev -U postgres
     \copy pres_stats_w_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\2014_02\csv\max_dev_stats_w_near_props.csv csv header
     \copy pres_stats_minus_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\2014_02\csv\max_dev_stats_minus_near_props.csv csv header

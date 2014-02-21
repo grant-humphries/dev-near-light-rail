@@ -9,28 +9,28 @@
 # versions of RLIS or TriMet data).  
 
 # MAX Stops 
-shp2pgsql -I -s 2913 //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/max_stops.shp max_stops | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/max_stops.shp max_stops | psql -U postgres -d transit_dev
 
 # Walkshed Polygons (Isocrones)
-shp2pgsql -I -s 2913 //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/max_stop_isocrones.shp isocrones | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/max_stop_isocrones.shp isocrones | psql -U postgres -d transit_dev
 
 # Trimmed Taxlots
-shp2pgsql -I -s 2913 //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/trimmed_taxlots.shp taxlot | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/trimmed_taxlots.shp taxlot | psql -U postgres -d transit_dev
 
 # Trimmed Multi-family Housing
-shp2pgsql -I -s 2913 //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/trimmed_multifam.shp multi_family | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02/trimmed_multifam.shp multi_family | psql -U postgres -d transit_dev
 
 
 # TRIMET DATA
 
 # TriMet Service District Boundary
-shp2pgsql -I -s 2913 //gisstore/gis/TRIMET/tm_fill.shp tm_district | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/TRIMET/tm_fill.shp tm_district | psql -U postgres -d transit_dev
 
 
 # RLIS DATA
 
 # City Boundaries
-shp2pgsql -I -s 2913 //gisstore/gis/Rlis/BOUNDARY/cty_fill.shp city | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/Rlis/BOUNDARY/cty_fill.shp city | psql -U postgres -d transit_dev
 
 # Urban Growth Boundary
-shp2pgsql -I -s 2913 //gisstore/gis/Rlis/BOUNDARY/ugb.shp ugb | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/Rlis/BOUNDARY/ugb.shp ugb | psql -U postgres -d transit_dev
