@@ -8,7 +8,7 @@
 # **NOTE:** The $1 sub-folder in the file path of 'project data' datasets must be replaced with the name of the folder that has been created for the current iteration of the project.  Don't push this change to github as it could lead to inadvertant use old files future iterations of the project
 
 # MAX Stops 
-shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/$/max_stops.shp max_stops | psql -U postgres -d transit_dev
+shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/$1/max_stops.shp max_stops | psql -U postgres -d transit_dev
 
 # Walkshed Polygons (Isocrones)
 shp2pgsql -s 2913 -d -I //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/$1/max_stop_isocrones.shp isocrones | psql -U postgres -d transit_dev

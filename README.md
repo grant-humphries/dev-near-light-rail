@@ -16,7 +16,7 @@ It's good practice to update this data each time this project is refreshed to en
  ```
  pgsql2shp -k -h maps2.trimet.org -u tmpublic -P tmpublic -f G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\max_stops.shp trimet current.stop_ext
  ```
- The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to **replace YYYY_MM in the path** with the name of the new folder.
+ The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to **replace `YYYY_MM` in the path** with the name of the new folder.
  
 Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isocrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
 
@@ -101,7 +101,7 @@ This final phase of the project selects taxlots and multi-family units that are 
     \copy pres_stats_w_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_w_near_props.csv csv header
     \copy pres_stats_minus_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_minus_near_props.csv csv header
     ```
-    Again recall that the YYYY_MM part of the path must be updated with name of the folder tied to the current iteration.
+    Again recall that **the `YYYY_MM` part of the path must be updated** with name of the folder tied to the current iteration.
 
 6. With Excel or OpenOffice save the csv's as .xlsx files and format them for presentation.
 7. Add metadata and any needed explanation of the statistics to the spreadsheets.
