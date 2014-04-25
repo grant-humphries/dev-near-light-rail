@@ -16,7 +16,8 @@ with oids;
 drop index if exists node_id_ix cascade;
 create index node_id_ix on nodes using BTREE (id);
 
---build the line segments using postgis st_makeline
+--build the line segments using postgis st_makeline and transform the geometry to oregon
+--state plane north projection (2913)
 insert into streets_and_trails (geom, way_id)
 	select ST_Transform(ST_MakeLine(n.geom order by wn.sequence_id), 2913), wn.way_id
 	from nodes n, way_nodes wn

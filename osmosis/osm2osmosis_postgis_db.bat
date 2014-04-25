@@ -56,10 +56,14 @@ set tag_transform=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev
 osmosis --read-xml %osm_data% --wkv keyValueList=%osm_tags% --tt %tag_transform% --write-pgsimp-0.6 user=%pg_uname% password=%pg_pword% database=%db_name%
 
 ::Run the 'compose_trails' sql script, this will build all streets and trails from the decomposed
-::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'
+::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'.
+::This script will also reproject the data to Oregon State Plane North (2913)
 set make_paths_script=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis/compose_trails.sql
 
 psql -h %pg_host% -d %db_name% -U %pg_uname% -f %make_paths_script%
 
 ::Export the street and trails table to a shapefile
-pgsql2shp
+set /p shapefile_out="Enter file path to save shapefile: "
+set table_name=streets_and_trails
+
+pgsql2shp -k -h %pg_host% -u %pg_uname% -P %pg_pword% -f %shapefile_out% %db_name% %table_name%
