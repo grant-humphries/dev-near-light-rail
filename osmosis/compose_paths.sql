@@ -21,7 +21,7 @@ create index node_id_ix on nodes using BTREE (id);
 insert into streets_and_trails (geom, way_id)
 	select ST_Transform(ST_MakeLine(n.geom order by wn.sequence_id), 2913), wn.way_id
 	from nodes n, way_nodes wn
-	where n.id = wn.node_id 
+	where n.id = wn.node_id
 	group by wn.way_id;
 
 create temp table sequence_count as
