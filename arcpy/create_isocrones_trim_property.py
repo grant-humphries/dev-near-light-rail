@@ -110,7 +110,7 @@ if f_name not in [field.name for field in max_stop_desc.fields]:
 # These areas are used to divide the stops into tabulation groups
 max_zones = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/max_stop_zones.shp'
 
-# Create a mapping form zone object id's to their names
+# Create a mapping from zone object id's to their names
 max_zone_dict = {}
 fields = ['OID@', 'name']
 with arcpy.da.SearchCursor(max_zones, fields) as cursor:
@@ -231,7 +231,7 @@ sa_sublayer_dict = arcpy.na.GetNAClassNames(service_area_layer)
 sa_facilities = sa_sublayer_dict['Facilities']
 sa_isocrones = sa_sublayer_dict['SAPolygons']
 
-# Used to keep track of the isocrones that have beeb added to the new feature class
+# Used to keep track of the isocrones that have been added to the new feature class
 tm_id_list = []
 
 def generateIsocrones(locations, break_value):
