@@ -16,8 +16,10 @@ arcpy.CheckOutExtension("Network")
 env.overwriteOutput = True
 env.addOutputsToMap = True
 
-# BE SURE TO UPDATE THIS FILE PATH TO THE NEW FOLDER EACH TIME A NEW ANALYSIS IS RUN!!!
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/2014_02'
+# Set workspace, the user will be prompted to enter the name of the subfolder that data is to be
+# written to for the current iteration
+project_folder = raw_input('Enter the name of the subfolder being used for this iteration of the project (should be in the form "YYYY_MM"): ')
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/' + project_folder
 
 # Create a 'temp' folder to hold intermediate datasets, and a 'csv' folder to hold spreadsheet (later
 # in the project) if they don't already exist
