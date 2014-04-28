@@ -30,11 +30,13 @@ psql -h %pg_host% -d %db_name% -U %pg_uname% -f %osmosis_schema_script%
 ::the tagtransform.xml file will be preserved on the features that are brought through.  Also be
 ::sure to indicate the schema that osmosis is importing into, in this case it's the pg_simple_schema
 ::that was created by the script run above
-set key_value_list=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis/keyvaluelistfile.txt
 set osm_data=G:/PUBLIC/OpenStreetMap/data/osm/or-wa.osm
-set tag_transform=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis/tagtransform.xml
 
-::Withourt 'call' command here this script will stop after the osmosis command
+set osmosis_input_path=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis
+set key_value_list=%osmosis_input_path%/keyvaluelistfile.txt
+set tag_transform=%osmosis_input_path%/tagtransform.xml
+
+::Without 'call' command here this script will stop after the osmosis command
 call osmosis --read-xml %osm_data% --wkv keyValueListFile=%key_value_list% --tt %tag_transform% --write-pgsimp-0.6 user=%pg_uname% password=%pgpassword% database=%db_name%
 
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed
