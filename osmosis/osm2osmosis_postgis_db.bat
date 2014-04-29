@@ -12,7 +12,7 @@ set /p pgpassword="Enter postgres password: "
 
 ::Drop the osmosis_ped database if it exists, 'i' prompts the user to confirm that they want to
 ::delete the database
-dropdb -h %pg_host% -U %pg_uname% -i --if-exists %db_name%
+dropdb -h %pg_host% -U %pg_uname% --if-exists -i %db_name%
 
 ::Create database 'osmosis_ped' on the local instance of postgres using the postgis template
 createdb -O %pg_uname% -T postgis_21_template -h %pg_host% -U %pg_uname% %db_name%
@@ -37,7 +37,12 @@ set key_value_list=%osmosis_input_path%/keyvaluelistfile.txt
 set tag_transform=%osmosis_input_path%/tagtransform.xml
 
 ::Without 'call' command here this script will stop after the osmosis command
-call osmosis --read-xml %osm_data% --wkv keyValueListFile=%key_value_list% --tt %tag_transform% --write-pgsimp-0.6 user=%pg_uname% password=%pgpassword% database=%db_name%
+::See osmosis documentation here: http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Data_Manipulation_Tasks
+call osmosis ^
+	--read-xml %osm_data% ^
+	--wkv keyValueListFile=%key_value_list% ^
+	--tt %tag_transform% ^
+	--write-pgsimp-0.6 host=%pg_host% database=%db_name% user=%pg_uname% password=%pgpassword% 
 
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed
 ::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'.
