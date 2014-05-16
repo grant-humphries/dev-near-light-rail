@@ -36,18 +36,29 @@ max_stops = os.path.join(env.workspace, 'max_stops.shp')
 #-----------------------------------------------------------------------------------------------------
 # This section can be removed once the orange line stops are added stops tables on maps10
 
-orange_stops = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/projected_orange_line_stops.shp'
-
 # Insert orange line stops, which are in the spatial db at this time, into the shapefile conataining
 # all of the other MAX stops
-fields = ['SHAPE@', 'stop_id', 'stop_name', 'routes', 'begin_date', 'end_date']
-i_cursor = arcpy.da.InsertCursor(max_stops, fields)
+orange_stops = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/projected_orange_line_stops.shp'
 
-with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
-	for geom, stop_id, name, routes, b_date, e_date in cursor:
-		i_cursor.insertRow((geom, stop_id, name, routes, b_date, e_date))
+# Check to see if the orange stops have already been added...
+orange_added = False
+fields = ['OID@', 'routes']
+with arcpy.da.SearchCursor(max_stops, fields) as cursor:
+	for oid, routes in cursor:
+		if routes == ':MAX Orange Line:':
+			orange_added = True
+			break
 
-del i_cursor
+# If they haven't add them
+if not orange_added:
+	fields = ['SHAPE@', 'stop_id', 'stop_name', 'routes', 'begin_date', 'end_date']
+	i_cursor = arcpy.da.InsertCursor(max_stops, fields)
+
+	with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
+		for geom, stop_id, name, routes, b_date, e_date in cursor:
+			i_cursor.insertRow((geom, stop_id, name, routes, b_date, e_date))
+
+	del i_cursor
 
 #-----------------------------------------------------------------------------------------------------
 
@@ -215,8 +226,8 @@ def generateisochrones(locations, break_value):
 	arcpy.na.Solve(service_area_layer)
 
 	# Grab the needed fields from the isochrones and write them to the feature class created to house
-	# them.  The features will only be added if their tm_id is not in the final isochrones fc
-	fields = ['SHAPE@', 'Name']
+	# them.  The features will only be added if their stop_id is not in the final isochrones fc
+	fields = ['SHAPE@', 'name']
 	with arcpy.da.SearchCursor(sa_isochrones, fields) as cursor:
 		for geom, output_name in cursor:
 			iso_attributes = re.split(' : 0 - ', output_name)
@@ -242,7 +253,7 @@ generateisochrones(outer_max, outer_max_distance)
 del i_cursor
 
 # Get value attributes from the original max stops data and add it to the new isochrones feature class, 
-# matching corresponding features.  Recall that the tm_id field has been copied to 'name' field and 
+# matching corresponding features.  Recall that the stop_id field has been copied to 'name' field and 
 # casted to string
 fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
@@ -254,6 +265,17 @@ fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
 	for stop_id, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[stop_id])
+
+# Add the area of the isochrones as an attribute, this will be used later to check for errors
+f_name = 'area'
+f_type = 'FLOAT'
+arcpy.management.AddField(final_isochrones, f_name, f_type)
+
+fields = ['SHAPE@AREA', 'area']
+with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
+	for area_value, area_field in cursor:
+		area_field = area_value
+		cursor.updateRow(area_value, area_field)
 
 # The timing module, which I found here: 
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution/1557906#1557906

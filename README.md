@@ -51,6 +51,7 @@ As of 2/18/2014 this phase of the project can't be automated with arcPy (only Ar
 6. Create network attributes based on the python functions here: `arcpy/network_attributes.py` (under the current workflow only the 'foot_permissons' attribute needs to be added.  Optionly there is code to measure walk minutes) 
 7. Select 'No' for the establishment of driving directions
 8. Review summary to ensure that all settings are correct then click 'Finish'
+9. Select 'Yes' to proceed with building the network dataset
 
 Once the network dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
