@@ -1,5 +1,5 @@
 # Grant Humphries for TriMet, 2013-14
-# ArcGIS Version:   10.2.1
+# ArcGIS Version:   10.2.2
 # Python Version:   2.7.5
 #--------------------------------
 
@@ -33,76 +33,36 @@ for folder in new_folders:
 # in the trimet database on the trimet.maps2.org.
 max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
-# Erase all non-MAX stops from the transit stops data
-fields = ['OID@', 'type']
-with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-	for oid, stop_type in cursor:
-		if int(stop_type) != 5:
-			cursor.deleteRow()
-
-# The 'lon' field is giving me trouble when I try to import this shapefile back into a PostGIS db
-# I think this is because of the negative numbers, but I'm dropping the fields 'lon' and 'lat' to
-# resolve this situation
-drop_fields = ['lon', 'lat']
-arcpy.management.DeleteField(max_stops, drop_fields)
-
 #-----------------------------------------------------------------------------------------------------
-# This section can be removed once the orange line stops are added to maps5
+# This section can be removed once the orange line stops are added stops tables on maps10
 
 orange_stops = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/projected_orange_line_stops.shp'
 
-# Make a list of all trimet id's that are assigned to stops in the max_stops dataset
-id_list = []
-fields = ['OID@', 'id']
-with arcpy.da.SearchCursor(max_stops, fields) as cursor:
-	for oid, data_id in cursor:
-		id_list.append(data_id)
+# Insert orange line stops, which are in the spatial db at this time, into the shapefile conataining
+# all of the other MAX stops
+fields = ['SHAPE@', 'stop_id', 'stop_name', 'routes', 'begin_date', 'end_date']
+i_cursor = arcpy.da.InsertCursor(max_stops, fields)
 
-# Create a starting point for new trimet id's for the orange line stops.  There are currently no trimet id's
-# over 20,000 so I'm starting at 50,000 to prevent conflict
-new_max_id = 50000
+with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
+	for geom, stop_id, name, routes, b_date, e_date in cursor:
+		i_cursor.insertRow((geom, stop_id, name, routes, b_date, e_date))
 
-# If the first new MAX is already in the max_stops table it means that the orange line stops have already been
-# added to the max stops feature class and thus the clause below shouldn't be run 
-if new_max_id not in id_list:
-	# Add orange line stops to max stops feature class
-	line_name = ':MAX Orange Line:'
-	i_fields = ['SHAPE@', 'id', 'routes']
-	i_cursor = arcpy.da.InsertCursor(max_stops, i_fields)
-
-	fields = ['OID@', 'SHAPE@']
-	with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
-		for oid, geom in cursor:
-			# ensure existing trimet id's aren't being used
-			while new_max_id in id_list:
-				new_max_id += 1
-			
-			i_cursor.insertRow((geom, new_max_id, line_name))
-			id_list.append(new_max_id)
-
-	del i_cursor
+del i_cursor
 
 #-----------------------------------------------------------------------------------------------------
 
 # Only a field called 'name' will be retained when locations are loaded into service area analysis as the
 # MAX stops will be.  In that field I need unique identifiers so attributes from this data can be properly
 # linked to the network analyst output
+f_name = 'name'
+f_type = 'LONG'
+arcpy.management.AddField(max_stops, f_name, f_type)
 
-# Move the values in 'name' to a new field to preserve them, then overwrite the original with unique id
-# from the (trimet) 'id' field
-f_name = 'stop_name'
-max_stop_desc = arcpy.Describe(max_stops)
-# if 'stop_name' field already exists that means this code block has already been run so skip
-if f_name not in [field.name for field in max_stop_desc.fields]:
-	f_type = 'TEXT'
-	arcpy.management.AddField(max_stops, f_name, f_type)
-
-	fields = ['id', 'name', 'stop_name']
-	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-		for tm_id, name, stop_name in cursor:
-			stop_name = name
-			name = str(int(tm_id))
-			cursor.updateRow((tm_id, name, stop_name))
+fields = ['stop_id', 'name']
+with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
+	for stop_id, name in cursor:
+		name = stop_id
+		cursor.updateRow((stop_id, name))
 
 
 # An attribute needs to be added to the max stops layer that indicates which 'MAX zone' it falls 
@@ -198,11 +158,11 @@ arcpy.management.CreateFeatureclass(os.path.dirname(final_isochrones), os.path.b
 
 # Add all fields that are needed in the new feature class, and drop the 'Id' field that exists
 # by default
-field_names = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
+field_names = ['stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
 	if f_name in ('stop_id', 'incpt_year'):
 		f_type = 'LONG'
-	elif f_name in ('tm_id', 'routes', 'max_zone'):
+	elif f_name in ('routes', 'max_zone'):
 		f_type = 'TEXT'
 	elif f_name == 'walk_dist':
 		f_type = 'DOUBLE'
@@ -213,7 +173,7 @@ drop_field = 'Id'
 arcpy.management.DeleteField(final_isochrones, drop_field)
 
 # create an insert cursor to populate the new feature class
-i_fields = ['SHAPE@', 'tm_id', 'walk_dist']
+i_fields = ['SHAPE@', 'stop_id', 'walk_dist']
 i_cursor = arcpy.da.InsertCursor(final_isochrones, i_fields) 
 
 # Create and configure a service area layer
@@ -234,7 +194,7 @@ sa_facilities = sa_sublayer_dict['Facilities']
 sa_isochrones = sa_sublayer_dict['SAPolygons']
 
 # Used to keep track of the isochrones that have been added to the new feature class
-tm_id_list = []
+stop_id_list = []
 
 def generateisochrones(locations, break_value):
 	# Set the break distance for this batch of stops
@@ -261,12 +221,12 @@ def generateisochrones(locations, break_value):
 		for geom, output_name in cursor:
 			iso_attributes = re.split(' : 0 - ', output_name)
 			
-			tm_id = iso_attributes[0]
+			stop_id = int(iso_attributes[0])
 			break_value = int(iso_attributes[1])
 
-			if tm_id not in tm_id_list:
-				i_cursor.insertRow((geom, tm_id, break_value))
-				tm_id_list.append(tm_id)
+			if stop_id not in stop_id_list:
+				i_cursor.insertRow((geom, stop_id, break_value))
+				stop_id_list.append(stop_id)
 
 # Set parameters specific to each set of isochrones:
 # For now I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
@@ -284,16 +244,16 @@ del i_cursor
 # Get value attributes from the original max stops data and add it to the new isochrones feature class, 
 # matching corresponding features.  Recall that the tm_id field has been copied to 'name' field and 
 # casted to string
-fields = ['name', 'stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(max_stops, fields) as cursor:
-	for tm_id, stop_id, routes, zone, year in cursor:
-		rail_stop_dict[tm_id] = (tm_id, stop_id, routes.strip(), zone, year)
+	for stop_id, routes, zone, year in cursor:
+		rail_stop_dict[stop_id] = (tstop_id, routes.strip(), zone, year)
 
-fields = ['tm_id', 'stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
-	for tm_id, stop_id, routes, zone, year in cursor:
-		cursor.updateRow(rail_stop_dict[tm_id])
+	for stop_id, routes, zone, year in cursor:
+		cursor.updateRow(rail_stop_dict[stop_id])
 
 # The timing module, which I found here: 
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution/1557906#1557906
@@ -301,49 +261,3 @@ with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
 timing.log('isochrones created')
 
 # ran in 9:15 on 2/19/14
-
-#-----------------------------------------------------------------------------------------------------
-# Trim regions covered by water bodies and natural areas (including parks) from properties, the area of 
-# these taxlots will be used for normalization in statistics resultant from this project
-
-timing.log('Property trimming beginning')
-
-taxlots = '//gisstore/gis/RLIS/TAXLOTS/taxlots.shp'
-multi_family = '//gisstore/gis/RLIS/LAND/multifamily_housing_inventory.shp'
-
-water = '//gisstore/gis/RLIS/WATER/stm_fill.shp'
-natural_areas = '//gisstore/gis/RLIS/LAND/orca.shp'
-
-# Dissolve water and natural area feature classes into a single geometry for each group
-water_dissolve = os.path.join(env.workspace, 'temp/water_dissolve.shp')
-arcpy.management.Dissolve(water, water_dissolve)
-
-nat_areas_dissolve = os.path.join(env.workspace, 'temp/water_and_nat_areas.shp')
-arcpy.management.Dissolve(natural_areas, nat_areas_dissolve)
-
-# Grab the dissolved water geometry feature
-fields = ['OID@', 'SHAPE@']
-with arcpy.da.SearchCursor(water_dissolve, fields) as cursor:
-	for oid, geom in cursor:
-		water_geom = geom
-
-# Union the natural area and water features into a single geometry
-with arcpy.da.UpdateCursor(nat_areas_dissolve, fields) as cursor:
-	for oid, geom in cursor:
-		geom = geom.union(water_geom)
-		cursor.updateRow((oid, geom))
-
-# Assign the parks/water feature class to more appropriately named variable
-water_and_nat_areas = nat_areas_dissolve
-
-# Erase merged parks/water features from property data
-# Consider try multi-processing for this step at some point as it is very computationally intensive:
-# http://blogs.esri.com/esri/arcgis/2011/08/29/multiprocessing/
-trimmed_taxlots = os.path.join(env.workspace, 'trimmed_taxlots.shp')
-arcpy.analysis.Erase(taxlots, water_and_nat_areas, trimmed_taxlots)
-
-trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
-arcpy.analysis.Erase(multi_family, water_and_nat_areas, trimmed_multifam)
-
-timing.endlog()
-# second phase ran in 39:41 on 2/19/14
