@@ -10,15 +10,12 @@ Follow the steps below to refresh the data and generate a current version of the
 
 It's good practice to update this data each time this project is refreshed to ensure any changes to the MAX network are captured
 
-1. In the folder `G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data` create a new sub-folder based on the current month and year in the format `YYYY_MM`.  All new data created during this iteration of the project will be stored here.
-2. In the command prompt use the following code to connect to **trimet** database on **maps2.trimet.org** (or any other TriMet map server with PostGIS databases) and convert the data in the table **current.stop_ext** into a shapefile called `max_stops.shp` that will be saved in the folder created in the previous step.
- 
- ```
- pgsql2shp -k -h maps2.trimet.org -u tmpublic -P tmpublic -f G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\max_stops.shp trimet current.stop_ext
- ```
- The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to **replace `YYYY_MM` in the path** with the name of the new folder.
- 
-Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isochrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
+1. Update under construction Orange Line stops (this step can be eliminated once they go into operation and are added to our spatial database stop tables)
+    * Open Oracle SQL Developer and connect to the 'HAWAII' database.  Then go to the user 'TRANS' and run the query stored here `oracle/get_orange_max_stops.sql`
+    * Save the result of the query as a csv in the following location `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` as 'projected_orange_line_stops.csv' (overwriting previously existing data is ok)
+    * Open the csv in ArcMap, display the x,y data, setting the projection to Oregon State Plane North (2913) and save it out a shapefile with the same name and in the same folder as the csv.
+
+2. Run the batch file stored here to create a shapefile that has all of the MAX stops that are currently in operation: `bin/update_max_stops.bat`
 
 ## Update OSM Data and Import into PostGIS with Osmosis
 

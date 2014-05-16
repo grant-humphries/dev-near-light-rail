@@ -1,6 +1,11 @@
 @echo off
 setlocal EnableDelayedExpansion
 
+::Set project workspace information
+set workspace=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail
+set /p proj_folder="Enter the name of the subfolder will be created for this iteration of the project (should be in 'YYYY_MM' format): "
+set pf_path=%workspace%/data/%proj_folder%
+
 ::Set postgres parameters
 set pg_host=localhost
 set db_name=osmosis_ped
@@ -32,9 +37,12 @@ psql -h %pg_host% -d %db_name% -U %pg_uname% -f %osmosis_schema_script%
 ::that was created by the script run above
 set osm_data=G:/PUBLIC/OpenStreetMap/data/osm/or-wa.osm
 
-set osmosis_input_path=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis
-set key_value_list=%osmosis_input_path%/keyvaluelistfile.txt
-set tag_transform=%osmosis_input_path%/tagtransform.xml
+set osmosis_path=%workspace%/github/dev-near-lightrail/osmosis
+set key_value_list=%osmosis_path%/keyvaluelistfile.txt
+set tag_transform=%osmosis_path%/tagtransform.xml
+
+::TO DO!!!!!!!!!!: have osmosis clip the input data to a smaller bounding box, the Salem and Vancouver
+::areas aren't needed
 
 ::Without 'call' command here this script will stop after the osmosis command
 ::See osmosis documentation here: http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Data_Manipulation_Tasks
@@ -52,7 +60,7 @@ set make_paths_script=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/github
 psql -h %pg_host% -d %db_name% -U %pg_uname% -f %make_paths_script%
 
 ::Export the street and trails table to a shapefile
-set /p shapefile_out="Enter output location for streets and trails shapefile: "
+set shapefile_out=%pf_path%/osm_foot.shp
 set table_name=streets_and_trails
 
 pgsql2shp -k -h %pg_host% -u %pg_uname% -P %pgpassword% -f %shapefile_out% %db_name% %table_name%
