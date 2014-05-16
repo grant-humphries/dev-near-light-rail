@@ -18,7 +18,7 @@ It's good practice to update this data each time this project is refreshed to en
  ```
  The -k parameter preserves the case of the column headings, -h, -u, and -P are the host, username, and password and the -f is the filepath where the shapefile is to be saved.  Be sure to **replace `YYYY_MM` in the path** with the name of the new folder.
  
-Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isocrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
+Note that when this shapefile is initially created it contains all TriMet transit stops, not just MAX stops.  When the python script `create_isochrones_trim_property.py` is run a couple of phases later in the workflow it will delete all non-MAX stops from this feature class.
 
 ## Update OSM Data and Import into PostGIS with Osmosis
 
@@ -57,15 +57,15 @@ As of 2/18/2014 this phase of the project can't be automated with arcPy (only Ar
 
 Once the network dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
-## Generate Walk Distance Isocrones and Trim Property Data
+## Generate Walk Distance isochrones and Trim Property Data
 
-The heavy lifting of the analysis is in these next two phases and almost all of is automated. This step will create walkshed polygons (aka 'isocrones') that encapsulate the areas that can reach a given MAX stop by walking X miles or less.  It also processes the two property datasets to remove area from them that are covered by water or natural areas.  This done so that development can be compared against areas of taxlots on which new construction/remodeling can occur.
+The heavy lifting of the analysis is in these next two phases and almost all of is automated. This step will create walkshed polygons (aka 'isochrones') that encapsulate the areas that can reach a given MAX stop by walking X miles or less.  It also processes the two property datasets to remove area from them that are covered by water or natural areas.  This done so that development can be compared against areas of taxlots on which new construction/remodeling can occur.
 
-1. Within `arcpy/create_isocrones_trim_property.py` change the project workspace to the folder that was created when the MAX stop data was updated at the beginning of this process.  This step is very important because if it is not done **older data will be overwritten and the wrong inputs will be used**.
+1. Within `arcpy/create_isochrones_trim_property.py` change the project workspace to the folder that was created when the MAX stop data was updated at the beginning of this process.  This step is very important because if it is not done **older data will be overwritten and the wrong inputs will be used**.
 2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps5.trimet.org.  If they have remove the block of code that was adds them to the maps5 export.
 3. Adjust walk distance thresholds if necessary.
-4. Run `create_isocrones_trim_property.py`.  This takes a little under 50 minutes to execute as of 02/2014.
-5. Once the isocrones shapefile has been created add a field to it and populate that field with the polygon's area.  Then sort the features by their area (ascending) and make sure the smallest ones have formed properly.  In the past a couple of stops have snapped to islands trapping the 'walker' in a small area.
+4. Run `create_isochrones_trim_property.py`.  This takes a little under 50 minutes to execute as of 02/2014.
+5. Once the isochrones shapefile has been created add a field to it and populate that field with the polygon's area.  Then sort the features by their area (ascending) and make sure the smallest ones have formed properly.  In the past a couple of stops have snapped to islands trapping the 'walker' in a small area.
 6. Examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
 
 The majority of the run time of this script is spend on geoprocessing the property data (~40 minutes).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
@@ -77,7 +77,7 @@ This final phase of the project selects taxlots and multi-family units that are 
 1. Create PostGIS database called **transit_dev** (version of PostGIS must be 2.0 or later for subsequent code to work) 
 2. Load the following datasets into the database:
     
-   **Project data**: MAX Stops, Walkshed Polygons (Isocrones), Trimmed Taxlots, Trimmed Multi-family Housing
+   **Project data**: MAX Stops, Walkshed Polygons (isochrones), Trimmed Taxlots, Trimmed Multi-family Housing
    
    **TriMet data**: TriMet Service District Boundary
     
