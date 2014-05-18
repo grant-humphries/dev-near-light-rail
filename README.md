@@ -13,31 +13,15 @@ It's good practice to update this data each time this project is refreshed to en
 1. Update under construction Orange Line stops (this step can be eliminated once they go into operation and are added to our spatial database stop tables)
     * Open Oracle SQL Developer and connect to the 'HAWAII' database.  Then go to the user 'TRANS' and run the query stored here `oracle/get_orange_max_stops.sql`
     * Save the result of the query as a csv in the following location `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` as 'projected_orange_line_stops.csv' (overwriting previously existing data is ok)
-    * Open the csv in ArcMap, display the x,y data, setting the projection to Oregon State Plane North (2913) and save it out a shapefile with the same name and in the same folder as the csv.
+    * Open the csv in ArcMap, display the x,y data, setting the projection to Oregon State Plane North (2913) and save it out as a shapefile with the same name (but .shp file extension) and in the same folder as the csv.
 
 2. Run the batch file stored here to create a shapefile that has all of the MAX stops that are currently in operation: `bin/update_max_stops.bat`
 
-## Update OSM Data and Import into PostGIS with Osmosis
+## Create Updated Streets and Trails Shapefile from OSM Data
 
-Instruction outlines below were derived from a blog post found [here](http://skipperkongen.dk/2012/08/02/import-osm-data-into-postgis-using-osmosis/).  I've modified the orginal workflow in order to meet the needs of this project.
+Run the batch file stored here `bin/osm2routable_shp.bat`
 
-1. Refresh the OSM data stored here: `//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/osm_data/or-wa.osm` with the nightly download that is written here: `//gisstore/gis/PUBLIC/OpenStreetMap/data/osm/or-wa.osm`
-2. Create a PostGIS database in postgres and name it **osmosis_ped**
-3. Create a schema compatable with Osmosis imports in the new database by running the following script : `pgsimple_schema_0.6.sql` (this file is included in the Osmosis download).  Execute the script in the cygwin terminal by using the following command:
-
-    ```bash
-    psql -d osmosis_ped -U postgres -f "C:/Program Files (x86)/Osmosis/script/pgsimple_schema_0.6.sql"
-    ```
-    It may also be neccessary to set the password for the postgres user using the command `SET pgpassword=xxx`
-
-4. Import the OpenStreetMap data into the database via Osmosis by pasting the command stored here `osmosis/osmosis_command.sh` (within this repo) into the command prompt.
-5. Turn the deconstructed OSM data (this is the format that Osmosis produces) back into line segments by running the script stored here: `osmosis/compose_trails.sql`.  Anything that is not a street or trails has been filtered out by Osmosis.  Use the command below to run the script from the the (cygwin) terminal:
-
-    ```bash
-    psql -d osmosis_ped -U postgres -f //gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/github/dev-near-lightrail/osmosis/compose_trails.sql
-    ```
-
-6. Create a shapefile of the OSM data by connecting to the **osmosis_ped** database with QGIS, adding the table created in step 5 (which is called **streets_and_trails**) to the map and saving it as shapefile called `osm_foot.shp` with an ESPG of **2913**.
+This script grabs updated OSM data, imports into PostGIS using Osmosis, rebuilds the streets and trails network in a database table, then exports to shapefile
 
 ## Create Network Dataset with ArcGIS's Network Analyst
 

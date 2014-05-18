@@ -204,9 +204,6 @@ sa_sublayer_dict = arcpy.na.GetNAClassNames(service_area_layer)
 sa_facilities = sa_sublayer_dict['Facilities']
 sa_isochrones = sa_sublayer_dict['SAPolygons']
 
-# Used to keep track of the isochrones that have been added to the new feature class
-stop_id_list = []
-
 def generateisochrones(locations, break_value):
 	# Set the break distance for this batch of stops
 	solver_props = arcpy.na.GetSolverProperties(service_area_layer)
@@ -235,18 +232,16 @@ def generateisochrones(locations, break_value):
 			stop_id = int(iso_attributes[0])
 			break_value = int(iso_attributes[1])
 
-			if stop_id not in stop_id_list:
-				i_cursor.insertRow((geom, stop_id, break_value))
-				stop_id_list.append(stop_id)
+			i_cursor.insertRow((geom, stop_id, break_value))
 
 # Set parameters specific to each set of isochrones:
-# For now I'm using 3300 feet for the CBD walk limit, have experimented with using 2475' and 4125' and
+# For now I'm using 2640 feet (half a mile) for the CBD walk limit, have experimented with using 2475', 3300' and 4125' and
 # am still working with Alan Lehto to finalize this number
-cbd_max_distance = 3300
+cbd_max_distance = 2640
 generateisochrones(cbd_max, cbd_max_distance)
 
-# 0.5 miles * 1.25
-outer_max_distance = 3300
+# 0.5 miles
+outer_max_distance = 2640
 generateisochrones(outer_max, outer_max_distance)
 
 # Cursor should be discarded now that it is no longer needed (can cause execution problems if not done)
@@ -259,7 +254,7 @@ fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(max_stops, fields) as cursor:
 	for stop_id, routes, zone, year in cursor:
-		rail_stop_dict[stop_id] = (tstop_id, routes.strip(), zone, year)
+		rail_stop_dict[stop_id] = (stop_id, routes.strip(), zone, year)
 
 fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
