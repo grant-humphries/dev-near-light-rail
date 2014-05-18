@@ -19,9 +19,9 @@ It's good practice to update this data each time this project is refreshed to en
 
 ## Create Updated Streets and Trails Shapefile from OSM Data
 
-Run the batch file stored here `bin/osm2routable_shp.bat`
+Run the batch file stored here `bin/osm2routable_shp.bat`.
 
-This script grabs updated OSM data, imports into PostGIS using Osmosis, rebuilds the streets and trails network in a database table, then exports to shapefile
+This script grabs current OSM data, imports it into PostGIS using Osmosis, rebuilds the streets and trails network in a database table, then exports to shapefile.
 
 ## Create Network Dataset with ArcGIS's Network Analyst
 
