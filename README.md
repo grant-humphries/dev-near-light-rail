@@ -10,12 +10,12 @@ Follow the steps below to refresh the data and generate a current version of the
 
 It's good practice to update this data each time this project is refreshed to ensure any changes to the MAX network are captured
 
-1. Update under construction Orange Line stops (this step can be eliminated once they go into operation and are added to our spatial database stop tables)
+1. Update under-construction Orange Line stops (this step can be eliminated once they go into operation and are added to our spatial database stop tables)
     * Open Oracle SQL Developer and connect to the 'HAWAII' database.  Then go to the user 'TRANS' and run the query stored here `oracle/get_orange_max_stops.sql`
     * Save the result of the query as a csv in the following location `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` as 'projected_orange_line_stops.csv' (overwriting previously existing data is ok)
     * Open the csv in ArcMap, display the x,y data, setting the projection to Oregon State Plane North (2913) and save it out as a shapefile with the same name (but .shp file extension) and in the same folder as the csv.
 
-2. Run the batch file stored here to create a shapefile that has all of the MAX stops that are currently in operation: `bin/update_max_stops.bat`
+2. Run the batch file stored here: `bin/update_max_stops.bat` to create a shapefile that has all of the MAX stops that are currently in operation.  A python script that will be run later in this process will merge the two stop datasets.
 
 ## Create Updated Streets and Trails Shapefile from OSM Data
 
@@ -25,7 +25,7 @@ This script grabs current OSM data, imports it into PostGIS using Osmosis, rebui
 
 ## Create Network Dataset with ArcGIS's Network Analyst
 
-As of 2/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is 'one-click' automation.
+As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is 'one-click' automation.
 
 1. In ArcMap right click OpenStreetMap shapefile created in the last step and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 2. In the next screen use the default name for the file
@@ -35,19 +35,24 @@ As of 2/18/2014 this phase of the project can't be automated with arcPy (only Ar
 6. Create network attributes based on the python functions here: `arcpy/network_attributes.py` (under the current workflow only the 'foot_permissons' attribute needs to be added.  Optionly there is code to measure walk minutes) 
 7. Select 'No' for the establishment of driving directions
 8. Review summary to ensure that all settings are correct then click 'Finish'
-9. Select 'Yes' to proceed with building the network dataset
+9. Select 'Yes' when prompted to proceed with building the Network Dataset
 
-Once the network dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
+Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
-## Generate Walk Distance isochrones and Trim Property Data
+## Generate Walkshed Isochrones
 
-The heavy lifting of the analysis is in these next two phases and almost all of is automated. This step will create walkshed polygons (aka 'isochrones') that encapsulate the areas that can reach a given MAX stop by walking X miles or less.  It also processes the two property datasets to remove area from them that are covered by water or natural areas.  This done so that development can be compared against areas of taxlots on which new construction/remodeling can occur.
+This step creates walkshed polygons (aka 'isochrones') that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
 
-1. Within `arcpy/create_isochrones_trim_property.py` change the project workspace to the folder that was created when the MAX stop data was updated at the beginning of this process.  This step is very important because if it is not done **older data will be overwritten and the wrong inputs will be used**.
-2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps5.trimet.org.  If they have remove the block of code that was adds them to the maps5 export.
+1. Within `arcpy/create_isochrones.py` change the project workspace (variable: 'env.workspace') to the folder that was created for the current iteration.  This should be a subfolder within `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` that reflects the current month and year in the format 'YYYY_MM'.  This step is very important because if it is not done **older data will be overwritten and the wrong inputs will be used**.  Within the python script named above there is a placeholder that will throw an error if not corrected, this is to ensure this change is made before the script is run.
+2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps10.trimet.org.  If they have remove the block of code that was adds them to the maps10 export.
 3. Adjust walk distance thresholds if necessary.
-4. Run `create_isochrones_trim_property.py`.  This takes a little under 50 minutes to execute as of 02/2014.
-5. Once the isochrones shapefile has been created add a field to it and populate that field with the polygon's area.  Then sort the features by their area (ascending) and make sure the smallest ones have formed properly.  In the past a couple of stops have snapped to islands trapping the 'walker' in a small area.
+4. Run `create_isochrones.py` in the python window in ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution). This script executed in a little under 10 minutes as of 02/2014.
+5. Once the isochrones shapefile has been created bring it into ArcMap or QGIS and sort the features by the area (ascending) and make sure the smallest ones have formed properly.  If any of them appear to be suspiciously small them compare them to the OSM network and determine in any changes to need to be made to geometry or attributes.
+
+## Trim Property Data
+
+Here two property datasets are processed such that the areas within them that are covered by water or natural areas (including parks) are removed.  This done because total property area is used as divisor against development value and only areas of taxlots on which new construction/remodeling can occur should be considered.
+
 6. Examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
 
 The majority of the run time of this script is spend on geoprocessing the property data (~40 minutes).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
