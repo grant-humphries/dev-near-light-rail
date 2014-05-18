@@ -47,15 +47,16 @@ This step creates walkshed polygons (aka 'isochrones') that encapsulate the area
 2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps10.trimet.org.  If they have remove the block of code that was adds them to the maps10 export.
 3. Adjust walk distance thresholds if necessary.
 4. Run `create_isochrones.py` in the python window in ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution). This script executed in a little under 10 minutes as of 02/2014.
-5. Once the isochrones shapefile has been created bring it into ArcMap or QGIS and sort the features by the area (ascending) and make sure the smallest ones have formed properly.  If any of them appear to be suspiciously small them compare them to the OSM network and determine in any changes to need to be made to geometry or attributes.
+5. Once the isochrones shapefile has been created bring it into ArcMap or QGIS and sort the features by the area (ascending) to make sure the smallest ones have formed properly.  If any of them appear to be suspiciously undersized then compare them to the OSM network and determine in any changes to need to be made to geometry or attributes.
 
 ## Trim Property Data
 
-Here two property datasets are processed such that the areas within them that are covered by water or natural areas (including parks) are removed.  This done because total property area is used as divisor against development value and only areas of taxlots on which new construction/remodeling can occur should be considered.
+Here two property datasets are processed such that the areas within them that are covered by water or natural areas (including parks) are removed.  This is done because total property area is used as divisor to normalize development value and only areas of taxlots on which new construction/remodeling can occur should be considered.
 
-6. Examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
+1. Run the 
+2. Examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
 
-The majority of the run time of this script is spend on geoprocessing the property data (~40 minutes).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
+Because there are roughly 600,000 polygons in the taxlot shapefile this geoprocessing step is time consuming (it took ~40 minutes as of last run).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
 
 ## Select and Compare Property Data and Generate Final Stats
 
