@@ -1,3 +1,16 @@
+@echo off
+setlocal EnableDelayedExpansion
+
+::Set project workspaces
+set workspace=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/
+set code_workspace=%workspace%/github/dev-near-lightrail
+
+set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
+set data_workspace=%workspace%/data/%data_folder%
+
+::Run python script that erases water and natural areas from taxlots and multi_family housing units
+python %code_workspace%/arcpy/trim_property.py
+
 ::Set postgres parameters
 set pg_host=localhost
 set db_name=transit_dev
@@ -14,14 +27,14 @@ set /p pgpassword="Enter postgres password:"
 set srid=2913
 
 ::Prompt the user to enter the name of the sub-folder holding current project datasets
-set /p proj_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
+set /p proj_folder=
 set proj_path=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/%proj_folder%
 
 ::MAX Stops 
 shp2pgsql -s %srid% -d -I %proj_path%/max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
 
-::Walkshed Polygons (Isocrones)
-shp2pgsql -s %srid% -d -I %proj_path%/max_stop_isocrones.shp isocrones | psql -h %pg_host% -U %pg_user% -d %db_name%
+::Walkshed Polygons (Isochrones)
+shp2pgsql -s %srid% -d -I %proj_path%/max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Taxlots
 shp2pgsql -s %srid% -d -I %proj_path%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U pg_user% -d %db_name%

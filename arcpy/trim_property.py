@@ -4,7 +4,7 @@
 #--------------------------------
 
 import os
-import re
+import sys
 import timing
 import arcpy
 from arcpy import env
@@ -16,10 +16,13 @@ arcpy.CheckOutExtension("Network")
 env.overwriteOutput = True
 env.addOutputsToMap = True
 
+# This is the name of the data folder for the current iteration of the project that is being passed
+# a parameter to the command prompt in the batch file trim_compare_property_generate_stats.bat.
+data_folder = sys.argv[1]
+
 # Set workspace, the user will be prompted to enter the name of the subfolder that data is to be
 # written to for the current iteration
-project_folder = raw_input('Enter the name of the subfolder being used for this iteration of the project (should be in the form "YYYY_MM"): ')
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/' + project_folder
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/' + data_folder
 
 # Trim regions covered by water bodies and natural areas (including parks) from properties, the area of 
 # these taxlots will be used for normalization in statistics resultant from this project
@@ -61,5 +64,5 @@ arcpy.analysis.Erase(taxlots, water_and_nat_areas, trimmed_taxlots)
 trimmed_multifam = os.path.join(env.workspace, 'trimmed_multifam.shp')
 arcpy.analysis.Erase(multi_family, water_and_nat_areas, trimmed_multifam)
 
-timing.endlog()
+timing.log('property trimmed')
 # ran in 39:41 on 2/19/14
