@@ -256,7 +256,6 @@ with arcpy.da.SearchCursor(max_stops, fields) as cursor:
 	for stop_id, stop_name, routes, zone, year in cursor:
 		rail_stop_dict[stop_id] = (stop_id, stop_name, routes.strip(), zone, year)
 
-fields = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
 	for stop_id, stop_name, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[stop_id])
