@@ -8,8 +8,18 @@ set code_workspace=%workspace%/github/dev-near-lightrail
 set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
 set data_workspace=%workspace%/data/%data_folder%
 
+
+::ERASE FROM PROPERTY DATASETS
+
 ::Run python script that erases water and natural areas from taxlots and multi_family housing units
-python %code_workspace%/arcpy/trim_property.py
+python %code_workspace%/arcpy/trim_property.py %data_folder%
+
+echo "Examine trimmed tax lot and multi-family housing layers to ensure erasures have executed properly"
+echo "Press CTRL + C to cancel script or"
+pause
+
+
+::CREATE DB AND LOAD SHAPEFILES INTO POSTGIS
 
 ::Set postgres parameters
 set pg_host=localhost
@@ -20,30 +30,30 @@ set pg_user=postgres
 ::set the password for most postgres commands in the current session
 set /p pgpassword="Enter postgres password:"
 
+::Drop the database if it already exists
+dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
 
-::PROJECT DATA (these were created in earlier phases of the project, most are modified 
-::versions of RLIS or TriMet data).  
+::Create a database called 'transit_dev' based on the postgis template
+createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
+
+::Project Data (these were created in earlier phases of the project).  
 ::Set input parameters
 set srid=2913
 
-::Prompt the user to enter the name of the sub-folder holding current project datasets
-set /p proj_folder=
-set proj_path=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/%proj_folder%
-
 ::MAX Stops 
-shp2pgsql -s %srid% -d -I %proj_path%/max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Walkshed Polygons (Isochrones)
-shp2pgsql -s %srid% -d -I %proj_path%/max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Taxlots
-shp2pgsql -s %srid% -d -I %proj_path%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing
-shp2pgsql -s %srid% -d -I %proj_path%/trimmed_multifam.shp multi_family | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_multifam.shp multi_family | psql -h %pg_host% -U pg_user% -d %db_name%
 
 
-::TRIMET DATA
+::TriMet Data
 ::Set path to data folder
 set trimet_path=G:/TRIMET
 
@@ -51,7 +61,7 @@ set trimet_path=G:/TRIMET
 shp2pgsql -s %srid% -d -I %trimet_path%/tm_fill.shp tm_district | psql -h %pg_host% -U pg_user% -d %db_name%
 
 
-::RLIS DATA
+::RLIS Data
 ::Set path to data folder
 set rlis_path=G:/Rlis
 
@@ -60,3 +70,28 @@ shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/cty_fill.shp city | psql -h %pg_h
 
 ::Urban Growth Boundary
 shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/ugb.shp ugb | psql -h %pg_host% -U pg_user% -d %db_name%
+
+
+::GENERATE PROPERTY STATS AND SAVE TO CSV
+
+::Select properties that meet criteria to be considered influenced bu MAX development and create 
+::groups to compare the properties against
+set select_props_script=%code_workspace%/postgis/select_and_compare_properties.sql
+psql -h %pg_host% -d %db_name% -U %pg_user% -f %select_props_script%
+
+::Compile and format the property stats
+set compile_stats_script=%code_workspace%/postgis/compile_property_stats.sql
+psql -h %pg_host% -d %db_name% -U %pg_user% -f %compile_stats_script%
+
+::Export the stats to CSV
+csv_workspace=%data_workspace%/csv
+if not exist %csv_workspace%/csv mkdir %csv_workspace%/csv
+
+stats_table1=pres_stats_w_near_max
+stats_table2=pres_stats_minus_near_max
+
+psql -h %pg_host% -d %db_name% -U %pg_user%
+
+\copy %stats_table1% to %csv_workspace%/%stats_table1%.csv csv header
+\copy %stats_table2% to %csv_workspace%/%stats_table2%.csv csv header
+\q
