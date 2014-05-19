@@ -17,7 +17,7 @@ It's good practice to update this data each time this project is refreshed to en
 
 2. Run the batch file stored here: `bin/update_max_stops.bat` to create a shapefile that has all of the MAX stops that are currently in operation.  A python script that will be run later in this process will merge the two stop datasets.
 
-## Create Updated Streets and Trails Shapefile from OSM Data
+## Create Updated Streets and Trails Shapefile from OpenStreetMap Data
 
 Run the batch file stored here `bin/osm2routable_shp.bat`.
 
