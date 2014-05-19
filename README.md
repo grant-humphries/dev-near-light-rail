@@ -55,5 +55,5 @@ Here the tax lot and multi-family housing datasets are processed such that the a
 
 1. Run the batch file stored here `bin/trim_compare_property_generate_stats.bat`.  Because there are roughly 600,000 polygons in the taxlot shapefile the geoprocessing in the first python script that this batch file launches is time consuming (it took ~40 minutes as of last run).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
 2. The batch script will pause automatically after the property data has been trimmed, examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
-3. After the script has completed use Excel or OpenOffice to save the output csv's (written here: G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/YYYY_MM/csv) to .xlsx format them for presentation.
+3. After the script has completed use Excel or OpenOffice to save the output csv's (written here: `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/YYYY_MM/csv`) to .xlsx format them for presentation.
 4. Add metadata and any needed explanation of the statistics to the spreadsheets.
