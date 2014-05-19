@@ -41,55 +41,19 @@ Once the Network Dataset has finished building (which takes a few minutes), plan
 
 ## Generate Walkshed Isochrones
 
-This step creates walkshed polygons (aka 'isochrones') that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
+This step creates walkshed polygons (a.k.a. 'isochrones') that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
 
 1. Within `arcpy/create_isochrones.py` change the project workspace (variable: 'env.workspace') to the folder that was created for the current iteration.  This should be a subfolder within `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` that reflects the current month and year in the format 'YYYY_MM'.  This step is very important because if it is not done **older data will be overwritten and the wrong inputs will be used**.  Within the python script named above there is a placeholder that will throw an error if not corrected, this is to ensure this change is made before the script is run.
 2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps10.trimet.org.  If they have remove the block of code that was adds them to the maps10 export.
 3. Adjust walk distance thresholds if necessary.
-4. Run `create_isochrones.py` in the python window in ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution). This script executed in a little under 10 minutes as of 02/2014.
+4. Run `create_isochrones.py` in the python window in ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution).  This is not ideal because when using the command prompt you can prompt users to to give input (such as the name of the project folder), so I hope to be able to be able to find a way to switch to this method.  The script executed in a little under 10 minutes as of 02/2014.
 5. Once the isochrones shapefile has been created bring it into ArcMap or QGIS and sort the features by the area (ascending) to make sure the smallest ones have formed properly.  If any of them appear to be suspiciously undersized then compare them to the OSM network and determine in any changes to need to be made to geometry or attributes.
 
-## Trim Property Data
+## Trim, Select and Compare Property Data and Generate Final Stats
 
-Here two property datasets are processed such that the areas within them that are covered by water or natural areas (including parks) are removed.  This is done because total property area is used as divisor to normalize development value and only areas of taxlots on which new construction/remodeling can occur should be considered.
+Here the tax lot and multi-family housing datasets are processed such that the areas within them that are covered by water or natural areas (including parks) are removed.  This is done because total property area is used as divisor to normalize development value and only areas of taxlots on which new construction/remodeling can occur should be considered.  Then using the isochrones created earlier properties that were built more recently than nearby MAX stations are selected and stats are generated that compare growth in those areas to other urbanized regions in the Portland metropolitan area.
 
-1. Run the 
-2. Examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
-
-Because there are roughly 600,000 polygons in the taxlot shapefile this geoprocessing step is time consuming (it took ~40 minutes as of last run).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
-
-## Select and Compare Property Data and Generate Final Stats
-
-This final phase of the project selects taxlots and multi-family units that are within walking distance of MAX stops and have been built upon or remodeled since the decision was made to build nearby MAX stops.   Then compares them to real estate development in the same time frame in larger areas throughout the Portland metro region in an to attempt to get a sense of the impact the addition of MAX has had on growth in nearby areas.
-
-1. Create PostGIS database called **transit_dev** (version of PostGIS must be 2.0 or later for subsequent code to work) 
-2. Load the following datasets into the database:
-    
-   **Project data**: MAX Stops, Walkshed Polygons (isochrones), Trimmed Taxlots, Trimmed Multi-family Housing
-   
-   **TriMet data**: TriMet Service District Boundary
-    
-   **RLIS data**: City Boundaries, Urban Growth Boundary
-    * Set the password for your PostGIS data base in the cygwin terminal with the following command `set pgpassword=********`
-    * Within the shell script `postgis/load_shapefiles.sh` change the subfolder in the file path for the 'project datasets' from the `YYYY_MM` placeholder to the name of the folder that was created for the current iteration.  However don't commit this back to github to avoid inadvertant use of old data in future runs of this project.
-    * Run the the afore mentioned script with cygwin.  The import commands within that file follow this template:
-    
-    ```bash
-    shp2pgsql -s -d -I <SRID> <PATH/TO/SHAPEFILE> <SCHEMA>.<DBTABLE> | psql -U <USERNAME> -d <DATABASE>
-    ```
-
-    The -s parameter sets the SRID (spatial reference) using an EPSG code, -d deletes the table if it already existsm, and -I creates a spatial index on the geometry column. 
-
-3. Run `postgis/select_and_compare_properties.sql` in PgAdmin3 (which is a PostGreSQL interface) or via the terminal or command prompt.
-4. Execute `postgis/compile_property_stats.sql` in PgAdmin.
-5. In the command prompt (haven't got this working the teminal yet, but plan to do so) use the commands below to write the final stats tables created by the by the script above to csv's:
-    
-    ```
-    psql -d transit_dev -U postgres
-    \copy pres_stats_w_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_w_near_props.csv csv header
-    \copy pres_stats_minus_near_max to G:\PUBLIC\GIS_Projects\Development_Around_Lightrail\data\YYYY_MM\csv\max_dev_stats_minus_near_props.csv csv header
-    ```
-    Again recall that **the `YYYY_MM` part of the path must be updated** with name of the folder tied to the current iteration.
-
-6. With Excel or OpenOffice save the csv's as .xlsx files and format them for presentation.
-7. Add metadata and any needed explanation of the statistics to the spreadsheets.
+1. Run the batch file stored here `bin/trim_compare_property_generate_stats.bat`.  Because there are roughly 600,000 polygons in the taxlot shapefile the geoprocessing in the first python script that this batch file launches is time consuming (it took ~40 minutes as of last run).  Multi-processing may be able to speed this up significantly and I plan to look into it at some point, for more info see the comments in the second section of the code.
+2. The batch script will pause automatically after the property data has been trimmed, examine the taxlot and multi-family housing layers and ensure sure the erasures have executed properly.
+3. After the script has completed use Excel or OpenOffice to save the output csv's (written here: G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/YYYY_MM/csv) to .xlsx format them for presentation.
+4. Add metadata and any needed explanation of the statistics to the spreadsheets.
