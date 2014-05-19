@@ -169,11 +169,11 @@ arcpy.management.CreateFeatureclass(os.path.dirname(final_isochrones), os.path.b
 
 # Add all fields that are needed in the new feature class, and drop the 'Id' field that exists
 # by default
-field_names = ['stop_id', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
+field_names = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year', 'walk_dist']
 for f_name in field_names:
 	if f_name in ('stop_id', 'incpt_year'):
 		f_type = 'LONG'
-	elif f_name in ('routes', 'max_zone'):
+	elif f_name in ('stop_name', 'routes', 'max_zone'):
 		f_type = 'TEXT'
 	elif f_name == 'walk_dist':
 		f_type = 'DOUBLE'
@@ -250,15 +250,15 @@ del i_cursor
 # Get value attributes from the original max stops data and add it to the new isochrones feature class, 
 # matching corresponding features.  Recall that the stop_id field has been copied to 'name' field and 
 # casted to string
-fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(max_stops, fields) as cursor:
-	for stop_id, routes, zone, year in cursor:
-		rail_stop_dict[stop_id] = (stop_id, routes.strip(), zone, year)
+	for stop_id, stop_name, routes, zone, year in cursor:
+		rail_stop_dict[stop_id] = (stop_id, stop_name, routes.strip(), zone, year)
 
-fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
+fields = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
-	for stop_id, routes, zone, year in cursor:
+	for stop_id, stop_name, routes, zone, year in cursor:
 		cursor.updateRow(rail_stop_dict[stop_id])
 
 # Add the area of the isochrones as an attribute, this will be used later to check for errors
@@ -270,7 +270,7 @@ fields = ['SHAPE@AREA', 'area']
 with arcpy.da.UpdateCursor(final_isochrones, fields) as cursor:
 	for area_value, area_field in cursor:
 		area_field = area_value
-		cursor.updateRow(area_value, area_field)
+		cursor.updateRow((area_value, area_field))
 
 # The timing module, which I found here: 
 # http://stackoverflow.com/questions/1557571/how-to-get-time-of-a-python-program-execution/1557906#1557906
