@@ -2,17 +2,17 @@
 setlocal EnableDelayedExpansion
 
 ::Set project workspaces
-set workspace=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/
-set code_workspace=%workspace%/github/dev-near-lightrail
+set workspace=G:\PUBLIC\GIS_Projects\Development_Around_Lightrail
+set code_workspace=%workspace%\github\dev-near-lightrail
 
 set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
-set data_workspace=%workspace%/data/%data_folder%
+set data_workspace=%workspace%\data\%data_folder%
 
 
 ::ERASE FROM PROPERTY DATASETS
 
 ::Run python script that erases water and natural areas from taxlots and multi_family housing units
-python %code_workspace%/arcpy/trim_property.py %data_folder%
+python %code_workspace%\arcpy\trim_property.py %data_folder%
 
 echo "Examine trimmed tax lot and multi-family housing layers to ensure erasures have executed properly"
 echo "Press CTRL + C to cancel script or"
@@ -41,35 +41,35 @@ createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
 set srid=2913
 
 ::MAX Stops 
-shp2pgsql -s %srid% -d -I %data_workspace%/max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Walkshed Polygons (Isochrones)
-shp2pgsql -s %srid% -d -I %data_workspace%/max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Taxlots
-shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing
-shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_multifam.shp multi_family | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_multifam.shp trimmed_multifam | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::TriMet Data
 ::Set path to data folder
-set trimet_path=G:/TRIMET
+set trimet_path=G:\TRIMET
 
 ::TriMet Service District Boundary
-shp2pgsql -s %srid% -d -I %trimet_path%/tm_fill.shp tm_district | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %trimet_path%\tm_fill.shp tm_district | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::RLIS Data
 ::Set path to data folder
-set rlis_path=G:/Rlis
+set rlis_path=G:\Rlis
 
 ::City Boundaries
-shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/cty_fill.shp city | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\cty_fill.shp city | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Urban Growth Boundary
-shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/ugb.shp ugb | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\ugb.shp ugb | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 echo "Examine the newly create database 'transit_dev' and ensure that all shapefiles have been imported correctly"
 echo "Press CTRL + C to cancel script or"
@@ -80,22 +80,20 @@ pause
 
 ::Select properties that meet criteria to be considered influenced bu MAX development and create 
 ::groups to compare the properties against
-set select_props_script=%code_workspace%/postgis/select_and_compare_properties.sql
+set select_props_script=%code_workspace%\postgis\select_and_compare_properties.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %select_props_script%
 
 ::Compile and format the property stats
-set compile_stats_script=%code_workspace%/postgis/compile_property_stats.sql
+set compile_stats_script=%code_workspace%\postgis\compile_property_stats.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %compile_stats_script%
 
 ::Export the stats to CSV
-csv_workspace=%data_workspace%/csv
-if not exist %csv_workspace%/csv mkdir %csv_workspace%/csv
+set csv_workspace=%data_workspace%\csv
+if not exist %csv_workspace% mkdir %csv_workspace%
 
-stats_table1=pres_stats_w_near_max
-stats_table2=pres_stats_minus_near_max
+::set stats_table1=pres_stats_w_near_max
+::set stats_table2=pres_stats_minus_near_max
 
 psql -h %pg_host% -d %db_name% -U %pg_user%
 
-\copy %stats_table1% to %csv_workspace%/%stats_table1%.csv csv header
-\copy %stats_table2% to %csv_workspace%/%stats_table2%.csv csv header
-\q
+\copy pres_stats_w_near_max to 
