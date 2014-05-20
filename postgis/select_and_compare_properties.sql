@@ -16,16 +16,16 @@ ALTER TABLE taxlot ADD habitable_acres numeric;
 --feet are in an acre
 UPDATE taxlot SET habitable_acres = (ST_Area(geom) / 43560);
 
---Spatially join taxlots and the isocrones that were created by based places that can be reached
+--Spatially join taxlots and the isochrones that were created by based places that can be reached
 --within a given walking distance from MAX stops.  The output is taxlots joined to attribute information
---of the isocrones that they intersect.  Note that there are intentionally duplicates in this table if 
+--of the isochrones that they intersect.  Note that there are intentionally duplicates in this table if 
 --a taxlot is within walking distance multiple stops that are in different 'MAX Zones'
 DROP TABLE IF EXISTS max_taxlots CASCADE;
 CREATE TABLE max_taxlots WITH OIDS AS
 	SELECT tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse,
 		tl.yearbuilt, min(iso.incpt_year) AS max_year, iso.max_zone, iso.walk_dist
 	FROM taxlot tl
-		JOIN isocrones iso
+		JOIN isochrones iso
 		--This command joins two features only if they intersect
 		ON ST_Intersects(tl.geom, iso.geom)
 	GROUP BY tl.gid, tl.geom, tl.tlid, tl.totalval, tl.habitable_acres, tl.prop_code, tl.landuse,
@@ -119,7 +119,7 @@ CREATE TABLE max_multifam WITH OIDS AS
 	SELECT mf.gid, mf.geom, mf.metro_id, mf.units, mf.unit_type, mf.habitable_acres, mf.mixed_use,
 		iso.max_zone, iso.walk_dist, mf.yearbuilt, min(iso.incpt_year) AS max_year
 	FROM multi_family mf
-		JOIN isocrones iso
+		JOIN isochrones iso
 		ON ST_Intersects(mf.geom, iso.geom)
 	GROUP BY mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type, mf.habitable_acres, 
 		mf.mixed_use, iso.max_zone, iso.walk_dist;

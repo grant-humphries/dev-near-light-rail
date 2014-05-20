@@ -47,10 +47,10 @@ shp2pgsql -s %srid% -d -I %data_workspace%/max_stops.shp max_stops | psql -h %pg
 shp2pgsql -s %srid% -d -I %data_workspace%/max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Taxlots
-shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_taxlots.shp taxlot | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing
-shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_multifam.shp multi_family | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_multifam.shp multi_family | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::TriMet Data
@@ -58,7 +58,7 @@ shp2pgsql -s %srid% -d -I %data_workspace%/trimmed_multifam.shp multi_family | p
 set trimet_path=G:/TRIMET
 
 ::TriMet Service District Boundary
-shp2pgsql -s %srid% -d -I %trimet_path%/tm_fill.shp tm_district | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %trimet_path%/tm_fill.shp tm_district | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::RLIS Data
@@ -66,10 +66,14 @@ shp2pgsql -s %srid% -d -I %trimet_path%/tm_fill.shp tm_district | psql -h %pg_ho
 set rlis_path=G:/Rlis
 
 ::City Boundaries
-shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/cty_fill.shp city | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/cty_fill.shp city | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Urban Growth Boundary
-shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/ugb.shp ugb | psql -h %pg_host% -U pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%/BOUNDARY/ugb.shp ugb | psql -h %pg_host% -U %pg_user% -d %db_name%
+
+echo "Examine the newly create database 'transit_dev' and ensure that all shapefiles have been imported correctly"
+echo "Press CTRL + C to cancel script or"
+pause
 
 
 ::GENERATE PROPERTY STATS AND SAVE TO CSV
