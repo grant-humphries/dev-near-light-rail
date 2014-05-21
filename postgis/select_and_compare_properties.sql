@@ -38,7 +38,7 @@ create table max_taxlots with oids as
 drop index if exists tl_in_isos_gid_ix cascade;
 create index tl_in_isos_gid_ix on max_taxlots using BTREE (gid);
 
-vacumm analyze max_taxlots;
+vacuum analyze max_taxlots;
 
 --------------------------
 --CREATE COMPARISON TAXLOTS
@@ -62,6 +62,7 @@ with oids;
 
 --should speed performance on nearest neighbor operation below
 cluster trimmed_taxlots using trimmed_taxlots_geom_gist;
+analyze trimmed_taxlots;
 
 --Insert taxlots that are not within walking distance of max stops into comparison-taxlots 
 insert into comparison_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code,
@@ -78,7 +79,7 @@ insert into comparison_taxlots (gid, geom, tlid, totalval, habitable_acres, prop
 	from trimmed_taxlots tt
 	where tt.gid not in (select mt.gid from max_taxlots mt);
 
-vacumm analyze comparison_taxlots;
+vacuum analyze comparison_taxlots;
 
 --Assign the max year based on the max zone, this method is being used because repeating the 
 --nearest neighbor method to get the year is far more time consuming
@@ -115,7 +116,7 @@ drop index if exists tl_compare_gix cascade;
 create index tl_compare_gix on comparison_taxlots using GIST (geom);
 
 cluster comparison_taxlots using tl_compare_gix;
-vacumm analyze comparison_taxlots;
+vacuum analyze comparison_taxlots;
 
 --Temp table will turn the 9 most populous cities in the TM district into a single geometry
 drop table if exists nine_cities cascade;
@@ -134,8 +135,8 @@ update comparison_taxlots as ct set
 	ugb = (select ST_Intersects(ugb.geom, ct.geom)
 		from ugb),
 	--Returns True if a taxlot intersects the TriMet's service district boundary
-	tm_dist = (select ST_Intersects(tm.geom, ct.geom)
-		from tm_district tm),
+	tm_dist = (select ST_Intersects(td.geom, ct.geom)
+		from tm_district td),
 	--Returns True if a taxlot intersects one of the nine most populous cities in the TM dist
 	nine_cities = (select ST_Intersects(nc.geom, ct.geom)
 		from nine_cities nc);
@@ -165,7 +166,7 @@ create table max_multifam with oids as
 drop index if exists mf_in_isos_gid_ix cascade;
 create index mf_in_isos_gid_ix on max_multifam using BTREE (gid);
 
-vacumm analyze max_multifam;
+vacuum analyze max_multifam;
 
 --------------------------
 --CREATE COMPARISON MULTIFAM
@@ -191,6 +192,7 @@ create table comparison_multifam(
 with oids;
 
 cluster trimmed_multifam using trimmed_multifam_geom_gist;
+analyze trimmed_multifam;
 
 --Insert multifam units outside of walking distance into the comparison-multifam
 insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
@@ -205,7 +207,7 @@ insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitabl
 	from trimmed_multifam tm
 	where tm.gid not in (select mm.gid from max_multifam mm);
 
-vacumm analyze comparison_multifam;
+vacuum analyze comparison_multifam;
 
 --Populate max_year column for properties outside max stop walking distance based on
 --max_year_zone_mapping table
@@ -228,13 +230,13 @@ cluster comparison_multifam using mf_compare_gix;
 vacuum analyze comparison_multifam;
 
 update max_multifam as mm set
-	ugb = (select ST_Intersects(ugb.geom, tm.geom)
+	ugb = (select ST_Intersects(ugb.geom, mm.geom)
 		from ugb),
 
-	tm_dist = (select ST_Intersects(tm.geom, tm.geom)
-		from tm_district tm),
+	tm_dist = (select ST_Intersects(td.geom, mm.geom)
+		from tm_district td),
 
-	nine_cities = (select ST_Intersects(nc.geom, tm.geom)
+	nine_cities = (select ST_Intersects(nc.geom, mm.geom)
 		from nine_cities nc);
 
 --Temp table is no longer needed
