@@ -243,4 +243,4 @@ update comparison_multifam as cm set
 drop table max_year_zone_mapping cascade;
 drop table nine_cities cascade;
 
---ran in 702,524 ms on 2/18/14 (definitely benefitted from some caching though)
+--ran in ~4,702,524 ms on 5/20/14 (definitely benefitted from some caching though)

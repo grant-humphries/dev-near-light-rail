@@ -13,10 +13,10 @@
 --This temp table removes duplicates that exist when taxlots are within walking distance of multiple stops
 --that have different 'max zone' associations
 drop table if exists max_tls_no_dupes cascade;
-create temp table max_tls_no_dupes as
-	select gid, geom, totalval, habitable_acres, yearbuilt, max_year, 1 as collapser
+create table max_tls_no_dupes as
+	select gid, geom, totalval, habitable_acres, yearbuilt, min(max_year) as max_year, 1 as collapser
 		from max_taxlots
-		group by gid, geom, totalval, yearbuilt, max_year, habitable_acres;
+		group by gid, geom, totalval, habitable_acres, yearbuilt;
 
 
 --Group MAX tax lots by zone.  Only include those that have been built on since MAX was built for the
@@ -48,8 +48,6 @@ insert into grouped_max_tls
 	where yearbuilt >= max_year
 	group by collapser;
 
-drop table max_tls_no_dupes cascade;
-
 
 ----------------------------------------------------------------
 --COMPARISON TAXLOTS INCLUDING MAX TAXLOTS
@@ -58,11 +56,11 @@ drop table max_tls_no_dupes cascade;
 
 --Create a version on the comparison taxlots that elimates the duplicates
 drop table if exists compare_tls_no_dupes cascade;
-create temp table compare_tls_no_dupes as
-	select gid, geom, totalval, yearbuilt, max_year, habitable_acres, near_max,
-		tm_dist, ugb, nine_cities
+create table compare_tls_no_dupes as
+	select gid, geom, totalval, habitable_acres, yearbuilt, min(max_year) as max_year,
+		near_max, tm_dist, ugb, nine_cities
 	from comparison_taxlots
-	group by gid, geom, totalval, yearbuilt, max_year, habitable_acres, near_max,
+	group by gid, geom, totalval, habitable_acres, yearbuilt, near_max,
 		tm_dist, ugb, nine_cities;
 
 
@@ -84,7 +82,7 @@ create temp table grouped_compare_tls as
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
 		and tm_dist is true
-	group by ct1.max_zone, max_year;
+	group by ct1.max_zone;
 
 --TM District as whole (no double counting)
 insert into grouped_compare_tls
@@ -113,7 +111,7 @@ insert into grouped_compare_tls
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
 		and ugb is true
-	group by max_zone, max_year;
+	group by max_zone;
 
 --UGB as a whole (no double counting)
 insert into grouped_compare_tls
@@ -143,7 +141,7 @@ insert into grouped_compare_tls
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
 		and nine_cities is true
-	group by max_zone, max_year;
+	group by max_zone;
 
 --Nine Cities as a whole (no double counting)
 insert into grouped_compare_tls
@@ -177,7 +175,7 @@ insert into grouped_compare_tls
 	where yearbuilt >= max_year
 		and tm_dist is true
 		and near_max is false
-	group by max_zone, max_year;
+	group by max_zone;
 
 --TM District, not near MAX, as a whole (no double counting)
 insert into grouped_compare_tls
@@ -210,7 +208,7 @@ insert into grouped_compare_tls
 	where yearbuilt >= max_year
 		and ugb is true
 		and near_max is false
-	group by max_zone, max_year;
+	group by max_zone;
 
 --UGB, not near MAX, as a whole (no double counting)
 insert into grouped_compare_tls
@@ -243,7 +241,7 @@ insert into grouped_compare_tls
 	where yearbuilt >= max_year
 		and nine_cities is true
 		and near_max is false
-	group by max_zone, max_year;
+	group by max_zone;
 
 --Nine Cities, not near MAX, as a whole (no double counting)
 insert into grouped_compare_tls
@@ -259,7 +257,6 @@ insert into grouped_compare_tls
 		and near_max is false
 	group by nine_cities;
 
-drop table compare_tls_no_dupes cascade;
 
 
 -------------------------------------------------------------------------------------------------
@@ -267,10 +264,10 @@ drop table compare_tls_no_dupes cascade;
 
 --This table eliminates duplicate multi-family entries
 drop table if exists max_mf_no_dupes cascade;
-create temp table max_mf_no_dupes as
-	select geom, units, yearbuilt, max_year, 1 as collapser
+create table max_mf_no_dupes as
+	select geom, units, yearbuilt, min(max_year) as max_year, 1 as collapser
 		from max_multifam
-		group by gid, geom, units, yearbuilt, max_year;
+		group by gid, geom, units, yearbuilt;
 
 
 --MAX MULTI-FAMILY
@@ -278,7 +275,7 @@ create temp table max_mf_no_dupes as
 drop table if exists grouped_max_mf cascade;
 create temp table grouped_max_mf as
 	select max_zone, sum(units) as units
-	from max_multifam mmf
+	from max_multifam
 	where yearbuilt >= max_year
 	group by max_zone;
 
@@ -289,18 +286,16 @@ insert into grouped_max_mf
 	where yearbuilt >= max_year
 	group by collapser;
 
-drop table max_mf_no_dupes cascade;
-
 
 ----------------------------------------------------------------
 --COMPARISON MULTI-FAMILY INCLUDING MAX MULTIFAM
 
 --Create a version on the comparison taxlots that elimates the duplicates
 drop table if exists compare_mf_no_dupes cascade;
-create temp table compare_mf_no_dupes as
-	select gid, geom, units, yearbuilt, max_year, near_max, tm_dist, ugb, nine_cities
+create table compare_mf_no_dupes as
+	select gid, geom, units, yearbuilt, min(max_year) as max_year, near_max, tm_dist, ugb, nine_cities
 	from comparison_multifam
-	group by gid, geom, units, yearbuilt, max_year, near_max, tm_dist, ugb, nine_cities;
+	group by gid, geom, units, yearbuilt, near_max, tm_dist, ugb, nine_cities;
 
 
 --TM District by MAX Zone (note that some tax lots will be in the tabulation for multiple zones)
@@ -417,7 +412,7 @@ insert into grouped_compare_mf
 		and near_max is false
 	group by nine_cities;
 
-drop table compare_mf_no_dupes cascade;
+
 
 -------------------------------------------------------------------------------------------------
 --CREATE AND POPULATE FINAL TABLE
