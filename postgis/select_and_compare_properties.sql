@@ -174,8 +174,8 @@ vacuum analyze max_multifam;
 --will come from the table below.  This because the multi-family layer doesn't have full coverage
 --of all buildable land in the region the way the taxlot data does
 drop table if exists comparison_multifam cascade;
-create table comparison_multifam(
-	gid int references trimmed_taxlots, 
+create table comparison_multifam (
+	gid int references trimmed_multifam, 
 	geom geometry,
 	metro_id int,
 	units int,
@@ -229,14 +229,14 @@ create index mf_compare_gix on comparison_multifam using GIST (geom);
 cluster comparison_multifam using mf_compare_gix;
 vacuum analyze comparison_multifam;
 
-update max_multifam as mm set
-	ugb = (select ST_Intersects(ugb.geom, mm.geom)
+update comparison_multifam as cm set
+	ugb = (select ST_Intersects(ugb.geom, cm.geom)
 		from ugb),
 
-	tm_dist = (select ST_Intersects(td.geom, mm.geom)
+	tm_dist = (select ST_Intersects(td.geom, cm.geom)
 		from tm_district td),
 
-	nine_cities = (select ST_Intersects(nc.geom, mm.geom)
+	nine_cities = (select ST_Intersects(nc.geom, cm.geom)
 		from nine_cities nc);
 
 --Temp table is no longer needed

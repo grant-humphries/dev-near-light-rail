@@ -94,12 +94,6 @@ if not exist %csv_workspace% mkdir %csv_workspace%
 set stats_table1=pres_stats_w_near_max
 set stats_table2=pres_stats_minus_near_max
 
-::TO DO!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-::I need to figure out how to pass variables to psql from the body of a shell script the code
-::commented out below doesn't work
-
-::psql -h %pg_host% -d %db_name% -U %pg_user%
-
-::\copy %stats_table1% to %csv_workspace%\%stats_table1%.csv csv header
-::\copy %stats_table2% to %csv_workspace%\%stats_table2%.csv csv header
-::\q
+::Pipe the command commands to psql as the variables below can't be expanded if one enters psql 
+echo \copy %stats_table1% to '%csv_workspace%\%stats_table1%.csv' csv header | psql -h %pg_host% -d %db_name% -U %pg_user%
+echo \copy %stats_table2% to '%csv_workspace%\%stats_table2%.csv' csv header | psql -h %pg_host% -d %db_name% -U %pg_user%
