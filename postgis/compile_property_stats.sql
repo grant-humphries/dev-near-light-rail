@@ -6,6 +6,33 @@
 --This script generates figures for tax lots newly built upon deemed to have been influence by the 
 --construction of MAX
 
+--Add indices on tables created in the last phase of this project to improve performance
+drop index if exists max_taxlot_yearbuilt_ix cascade;
+create index max_taxlot_yearbuilt_ix on max_taxlots using BTREE (yearbuilt);
+
+drop index if exists max_taxlot_max_year_ix cascade;
+create index max_taxlot_max_year_ix on max_taxlots using BTREE (max_year);
+
+drop index if exists mf_compare_gid_ix cascade;
+create index mf_compare_gid_ix on comparison_multifam using BTREE (gid);
+
+drop index if exists mf_compare_max_zone_ix cascade;
+create index mf_compare_max_zone_ix on comparison_multifam using BTREE (max_zone);
+
+
+--***Taxlots***
+
+--MAX TAXLOTS
+
+--This temp table removes duplicates that exist when taxlots are within walking distance of multiple stops
+--that have different 'max zone' associations
+drop table if exists max_tls_no_dupes cascade;
+create temp table max_tls_no_dupes as
+	select gid, geom, totalval, habitable_acres, yearbuilt, max_year, 1 as collapser
+		from max_taxlots
+		group by gid, geom, totalval, yearbuilt, max_year, habitable_acres;
+
+
 --Group MAX tax lots by zone.  Only include those that have been built on since MAX was built for the
 --total value calculation, but include all lots in zone for area calculation
 drop table if exists grouped_max_tls cascade;
@@ -14,8 +41,7 @@ create temp table grouped_max_tls as
 		--The Central Business District is the only MAX zone that has areas within it that are assigned
 		--to different MAX years, that issue is handled with the case statemnent below
 		(case when mt1.max_zone = 'Central Business District' then 'Variable (1980, 1999, 2003)'
-		 	else min(mt1.max_year)::text
-		 end) as max_year,
+		 	else min(mt1.max_year)::text end) as max_year,
 		mt1.walk_dist, sum(mt1.totalval) as totalval,
 		(select	sum(mt2.habitable_acres)
 			from max_taxlots mt2
@@ -25,119 +51,244 @@ create temp table grouped_max_tls as
 	where yearbuilt >= max_year
 	group by mt1.max_zone, mt1.walk_dist;
 
---This temp table removes duplicates that exist when taxlots are within walking distance of multiple stops
---that have different 'max zone' associations
-drop table if exists tls_no_dupes cascade;
-create temp table tls_no_dupes as
-	select geom, totalval, yearbuilt, max_year, habitable_acres, 1 as collapser
-		from max_taxlots
-		group by gid, geom, totalval, yearbuilt, max_year, habitable_acres;
-
 --Add an entry that sums the total value of new construction taxlots and total area of all taxlots near
 --MAX to the table
 insert into grouped_max_tls
 	select 'All Zones', null, null, sum(totalval), 
 		(select sum(habitable_acres)
-			from tls_no_dupes
+			from max_tls_no_dupes
 			group by collapser)
-	from tls_no_dupes
+	from max_tls_no_dupes
 	where yearbuilt >= max_year
 	group by collapser;
 
-drop table tls_no_dupes cascade;
+drop table max_tls_no_dupes cascade;
 
----------------
+
+----------------------------------------------------------------
+--COMPARISON TAXLOTS INCLUDING MAX TAXLOTS
 --Figures for tax lots newly built upon for the entire region (to be used as a baseline of comparison
 --for max taxlots)
 
---Group 
+--Create a version on the comparison taxlots that elimates the duplicates
+drop table if exists compare_tls_no_dupes cascade;
+create temp table compare_tls_no_dupes as
+	select gid, geom, totalval, yearbuilt, max_year, habitable_acres, near_max,
+		tm_dist, ugb, nine_cities
+	from comparison_taxlots
+	group by gid, geom, totalval, yearbuilt, max_year, habitable_acres, near_max,
+		tm_dist, ugb, nine_cities;
+
+
+--TriMet District by Max Zone (note that some tax lots will be in the tabulation for multiple zones
+--as duplicates exist in the underlying table)
 drop table if exists grouped_tls cascade;
 create temp table grouped_tls as
-	select 'TM District'::text as bounds, ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
+	select 'TM District'::text as bounds, max_zone 
+		(case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end) as max_year,
+		sum(totalval) as totalval,
+		--This piece is done as sub query because I want the area for all tax lots in these regions
+		--not just the ones with construction since the MAX line was built
 		(select sum(ct2.habitable_acres)
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and tm_dist = true
+				and ct2.tm_dist is true
 			group by ct2.max_zone) as habitable_acres
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and tm_dist = true
-	group by ct1.max_zone, ct1.max_year;
+		and tm_dist is true
+	group by max_zone, max_year;
 
---UGB
+--TM District as whole (no double counting)
 insert into grouped_tls
-	select 'UGB', ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
-		(select sum (ct2.habitable_acres)
+	select 'TM District', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres)
+			from compare_tls_no_dupes cnd2
+			where cnd2.tm_dist = cnd1.tm_dist
+			group by cnd2.tm_dist)
+	from compare_tls_no_dupes cnd1
+	where yearbuilt >= max_year
+		and tm_dist is true
+	group by tm_dist;
+
+------------------
+--UGB by MAX Zone (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_tls
+	select 'UGB', max_zone,
+		case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end,
+		sum(totalval),
+		(select sum(ct2.habitable_acres)
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and ugb = true
-			group by max_zone) as habitable_acres
+				and ct2.ugb is true
+			group by ct2.max_zone)
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and ugb = true
-	group by ct1.max_zone, ct1.max_year;
+		and ugb is true
+	group by max_zone, max_year;
 
---Taxlots with the 9 most populous cities in the TriMet districy
+--UGB as a whole (no double counting)
 insert into grouped_tls
-	select 'Nine Biggest Cities in TM District', ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
-		(select sum (ct2.habitable_acres) 
+	select 'UGB', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres)
+			from compare_tls_no_dupes cnd2
+			where cnd2.ugb = cnd1.ugb
+			group by cnd2.ugb)
+	from comparison_taxlots cnd1
+	where yearbuilt >= max_year
+		and ugb is true
+	group by ugb;
+
+------------------
+--Taxlots with the 9 most populous cities in the TriMet district (note that some tax lots will be in
+--the tabulation for multiple zones)
+insert into grouped_tls
+	select 'Nine Biggest Cities in TM District', max_zone,
+		case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end,
+		sum(totalval),
+		(select sum(ct2.habitable_acres) 
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and nine_cities = true
-			group by max_zone) as habitable_acres
+				and ct2.nine_cities is true
+			group by ct2.max_zone)
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and nine_cities = true
-	group by ct1.max_zone, ct1.max_year;
+		and nine_cities is true
+	group by max_zone, max_year;
 
---Within the TriMet District, but doesn't not include taxlots that are within walking distance of MAX
+--Nine Cities as a whole (no double counting)
 insert into grouped_tls
-	select 'TM District, not in MAX Walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
-		(select sum (ct2.habitable_acres)
+	select 'Nine Biggest Cities in TM District', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres) 
+			from compare_tls_no_dupes cnd2
+			where cnd2.nine_cities = cnd1.nine_cities
+			group by cnd2.nine_cities)
+	from compare_tls_no_dupes cnd1
+	where yearbuilt >= max_year
+		and nine_cities is true
+	group by nine_cities;
+
+
+----------------------------------------------------------------
+--COMPARISON TAXLOTS EXCLUDING MAX TOAXLOTS
+--Within the TriMet District, by MAX group, but doesn't not include taxlots that are within walking
+--distance of MAX (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_tls
+	select 'TM District, not in MAX Walkshed', max_zone,
+		case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end,
+		sum(totalval),
+		(select sum(ct2.habitable_acres)
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and tm_dist = true
-				and near_max = 'no'
-			group by max_zone) as habitable_acres
+				and ct2.tm_dist is true
+				and ct2.near_max is false
+			group by ct2.max_zone)
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and tm_dist = true
-		and near_max = 'no'
-	group by ct1.max_zone, ct1.max_year;
+		and tm_dist is true
+		and near_max is false
+	group by max_zone, max_year;
 
---UGB not near MAX
+--TM District, not near MAX, as a whole (no double counting)
 insert into grouped_tls
-	select 'UGB, not in MAX Walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
-		(select sum (ct2.habitable_acres)
+	select 'TM District, not in MAX Walkshed', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres)
+			from compare_tls_no_dupes cnd2
+			where cnd2.tm_dist = cnd1.tm_dist
+				and cnd2.near_max is false
+			group by cnd2.tm_dist)
+	from compare_tls_no_dupes cnd1
+	where yearbuilt >= max_year
+		and tm_dist is true
+		and near_max is false
+	group by tm_dist;
+
+------------------
+--UGB, not near MAX (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_tls
+	select 'UGB, not in MAX Walkshed', max_zone,
+		case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end,
+		sum(totalval),
+		(select sum(ct2.habitable_acres)
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and ugb = true
-				and near_max = 'no'
-			group by max_zone) as habitable_acres
+				and ct2.ugb is true
+				and ct2.near_max is false
+			group by ct2.max_zone)
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and ugb = true
-		and near_max = 'no'
-	group by ct1.max_zone, ct1.max_year;
+		and ugb is true
+		and near_max is false
+	group by max_zone, max_year;
 
---9 Cities not near MAX
+--UGB, not near MAX, as a whole (no double counting)
 insert into grouped_tls
-	select 'Nine Biggest Cities, not in MAX Walkshed', ct1.max_zone, ct1.max_year, sum(ct1.totalval) as totalval,
-		(select sum (ct2.habitable_acres)
+	select 'UGB, not in MAX Walkshed', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres)
+			from compare_tls_no_dupes cnd2
+			where cnd2.ugb = ct1.ugb
+				and cnd2.near_max is false
+			group by cnd2.ugb)
+	from compare_tls_no_dupes cnd1
+	where yearbuilt >= max_year
+		and ugb is true
+		and near_max is false
+	group by ugb;
+
+------------------
+--Nine Cities, not near MAX (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_tls
+	select 'Nine Biggest Cities, not in MAX Walkshed', max_zone,
+		case when max_zone ='Central Business District' then 'Variable (1980, 1999, 2003)'
+			else min(max_year)::text end,
+		sum(totalval),
+		(select sum(ct2.habitable_acres)
 			from comparison_taxlots ct2
 			where ct2.max_zone = ct1.max_zone
-				and nine_cities = true
-				and near_max = 'no'
-			group by max_zone) as habitable_acres
+				and ct2.nine_cities is true
+				and ct2.near_max is false
+			group by ct2.max_zone)
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
-		and nine_cities = true
-		and near_max = 'no'
-	group by ct1.max_zone, ct1.max_year;
+		and nine_cities is true
+		and near_max is false
+	group by max_zone, max_year;
 
-----
---Multi-family
+--Nine Cities, not near MAX, as a whole (no double counting)
+insert into grouped_tls
+	select 'Nine Biggest Cities, not in MAX Walkshed', 'All Zones', null, sum(totalval),
+		(select sum(cnd2.habitable_acres)
+			from compare_tls_no_dupes cnd2
+			where cnd2.nine_cities = cnd1.nine_cities
+				and cnd2.near_max is false
+			group by cnd2.nine_cities)
+	from comparison_taxlots ct1
+	where yearbuilt >= max_year
+		and nine_cities is true
+		and near_max is false
+	group by nine_cities;
 
+drop table compare_tls_no_dupes cascade;
+
+
+-------------------------------------------------------------------------------------------------
+--**Multi-family Housing Units***
+
+--This table eliminates duplicate multi-family entries
+drop table if exists mf_no_dupes cascade;
+create temp table mf_no_dupes as
+	select geom, units, yearbuilt, max_year, 1 as collapser
+		from max_multifam
+		group by gid, geom, units, yearbuilt, max_year;
+
+
+--MAX MULTI-FAMILY
+--MAX multifam by MAX zone, (note that some tax lots will be in the tabulation for multiple zones)
 drop table if exists grouped_max_mf cascade;
 create temp table grouped_max_mf as
 	select max_zone, sum(units) as units
@@ -145,12 +296,7 @@ create temp table grouped_max_mf as
 	where yearbuilt >= max_year
 	group by max_zone;
 
-drop table if exists mf_no_dupes cascade;
-create temp table mf_no_dupes as
-	select geom, units, yearbuilt, max_year, 1 as collapser
-		from max_multifam
-		group by gid, geom, units, yearbuilt, max_year;
-
+--MAX multifam as a whole (no double counting)
 insert into grouped_max_mf
 	select 'All Zones', sum(units)
 	from mf_no_dupes
@@ -159,56 +305,136 @@ insert into grouped_max_mf
 
 drop table mf_no_dupes cascade;
 
-----
 
+----------------------------------------------------------------
+--COMPARISON MULTI-FAMILY INCLUDING MAX MULTIFAM
+
+--Create a version on the comparison taxlots that elimates the duplicates
+drop table if exists compare_mf_no_dupes cascade;
+create temp table compare_mf_no_dupes as
+	select gid, geom, units, yearbuilt, max_year, near_max, tm_dist, ugb, nine_cities
+	from comparison_multifam
+	group by gid, geom, units, yearbuilt, max_year, near_max, tm_dist, ugb, nine_cities;
+
+
+--TM District by MAX Zone (note that some tax lots will be in the tabulation for multiple zones)
 drop table if exists grouped_mf cascade;
 create temp table grouped_mf as
 	select 'TM District'::text as bounds, max_zone, sum(units) as units
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and tm_dist = true
+		and tm_dist is true
 	group by max_zone;
 
+--TM District as a whole (no double counting)
 insert into grouped_mf
-	select 'UGB', max_zone, sum(units) as units
+	select 'TM District', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and tm_dist is true
+	group by tm_dist;
+
+------------------
+--UGB by MAX Zone (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_mf
+	select 'UGB', max_zone, sum(units)
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and ugb = true
+		and ugb is true
 	group by max_zone;
 
+--UGB as a whole (no double counting)
 insert into grouped_mf
-	select 'Nine Biggest Cities in TM District', max_zone, sum(units) as units
+	select 'UGB', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and ugb is true
+	group by ugb;
+
+------------------
+--Nine Cities by MAX Zone (note that some tax lots will be in the tabulation for multiple zones)
+insert into grouped_mf
+	select 'Nine Biggest Cities in TM District', max_zone, sum(units)
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and nine_cities = true
+		and nine_cities is true
 	group by max_zone;
 
+--Nine Cities as whole (no double counting)
 insert into grouped_mf
-	select 'TM District, not in MAX Walkshed', max_zone,sum(units) as units
+	select 'Nine Biggest Cities in TM District', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and nine_cities is true
+	group by nine_cities;
+
+
+----------------------------------------------------------------
+--COMPARISON MULTI-FAMILY INCLUDING MAX MULTIFAM
+
+--TM District, not near MAX, by MAX Zone (note that some tax lots will be in the tabulation
+--for multiple zones)
+insert into grouped_mf
+	select 'TM District, not in MAX Walkshed', max_zone, sum(units)
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and tm_dist = true
-		and near_max = 'no'
+		and tm_dist is true
+		and near_max is false
 	group by max_zone;
 
+--TM District, not near MAX, as a whole (no double counting)
 insert into grouped_mf
-	select 'UGB, not in MAX Walkshed', max_zone, sum(units) as units
+	select 'TM District, not in MAX Walkshed', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and tm_dist is true
+		and near_max is false
+	group by tm_dist;
+
+------------------
+--UGB, not near MAX, by MAX Zone (note that some tax lots will be in the tabulation for
+--multiple zones)
+insert into grouped_mf
+	select 'UGB, not in MAX Walkshed', max_zone, sum(units)
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and ugb = true
-		and near_max = 'no'
+		and ugb is true
+		and near_max is false
 	group by max_zone;
 
+--UGB, not near MAX, as a whole (no double counting)
 insert into grouped_mf
-	select 'Nine Biggest Cities, not in MAX Walkshed', max_zone, sum(units) as units
+	select 'UGB, not in MAX Walkshed', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and ugb is true
+		and near_max is false
+	group by ugb;
+
+------------------
+--Nine Cities, not near MAX, by MAX Zone (note that some tax lots will be in the tabulation
+--for multiple zones)
+insert into grouped_mf
+	select 'Nine Biggest Cities, not in MAX Walkshed', max_zone, sum(units)
 	from comparison_multifam
 	where yearbuilt >= max_year
-		and nine_cities = true
-		and near_max = 'no'
+		and nine_cities is true
+		and near_max is false
 	group by max_zone;
 
--------------
---Populate final tables
+--Nine Cities, not near MAX, as a whole (no double counting)
+insert into grouped_mf
+	select 'Nine Biggest Cities, not in MAX Walkshed', 'All Zones', sum(units)
+	from compare_mf_no_dupes
+	where yearbuilt >= max_year
+		and nine_cities is true
+		and near_max is false
+	group by nine_cities;
+
+drop table compare_mf_no_dupes cascade;
+
+-------------------------------------------------------------------------------------------------
+--CREATE AND POPULATE FINAL TABLE
 
 drop table if exists property_stats cascade;
 create table property_stats (
@@ -239,15 +465,9 @@ insert into property_stats
 --Temp tables no longer needed
 drop table grouped_max_tls, grouped_tls, grouped_max_mf, grouped_mf cascade;
 
---Sum all of the 'MAX Zone' groups for the various bounding extents being used
-insert into property_stats
-	select group_desc, 'All Zones', null, null, sum(totalval), (sum(totalval) / sum(habitable_acres)), 
-	sum(housing_units), (sum(housing_units) / sum(habitable_acres)), sum(habitable_acres) 
-	from property_stats
-	--The properties near max should not be summed this way because there would be double counting
-	--they've alreacdy been summed properly and inserted to the table earlier in the script
-	where group_desc != 'Properties in MAX Walkshed'
-	group by group_desc;
+------------------
+--POPULATE AND SORT OUTPUT STATS TABLES
+--These will be written to spreadsheets
 
 --The following attributes are being added so that the output can be formatted for presentation
 alter table property_stats add group_rank int default 0;
@@ -265,7 +485,7 @@ create table pres_stats_w_near_max with oids as
 	select group_desc, max_zone, max_year, walk_distance, totalval, normalized_value, housing_units, normalized_h_units
 	from property_stats
 	where group_desc not like '%not in MAX Walkshed%'
-	order by zone_rank, max_zone, group_rank desc, group_desc;
+	order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
 drop table if exists pres_stats_minus_near_max cascade;
 create table pres_stats_minus_near_max with oids as
@@ -273,6 +493,6 @@ create table pres_stats_minus_near_max with oids as
 	from property_stats
 	where group_desc like '%not in MAX Walkshed%'
 		OR group_desc = 'Properties in MAX Walkshed'
-	order by zone_rank, max_zone, group_rank desc, group_desc;
+	order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
 --ran in 13,086 ms on 2/14 (may be benefitting from caching)
