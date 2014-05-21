@@ -61,7 +61,7 @@ create table comparison_taxlots (
 with oids;
 
 --should speed performance on nearest neighbor operation below
-cluster trimmed_taxlots using ;
+cluster trimmed_taxlots using trimmed_taxlots_geom_gist;
 
 --Insert taxlots that are not within walking distance of max stops into comparison-taxlots 
 insert into comparison_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code,
@@ -190,7 +190,7 @@ create table comparison_multifam(
 	nine_cities boolean)
 with oids;
 
-cluster trimmed_multifam using ;
+cluster trimmed_multifam using trimmed_multifam_geom_gist;
 
 --Insert multifam units outside of walking distance into the comparison-multifam
 insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,

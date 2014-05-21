@@ -6,20 +6,6 @@
 --This script generates figures for tax lots newly built upon deemed to have been influence by the 
 --construction of MAX
 
---Add indices on tables created in the last phase of this project to improve performance
-drop index if exists max_taxlot_yearbuilt_ix cascade;
-create index max_taxlot_yearbuilt_ix on max_taxlots using BTREE (yearbuilt);
-
-drop index if exists max_taxlot_max_year_ix cascade;
-create index max_taxlot_max_year_ix on max_taxlots using BTREE (max_year);
-
-drop index if exists mf_compare_gid_ix cascade;
-create index mf_compare_gid_ix on comparison_multifam using BTREE (gid);
-
-drop index if exists mf_compare_max_zone_ix cascade;
-create index mf_compare_max_zone_ix on comparison_multifam using BTREE (max_zone);
-
-
 --***Taxlots***
 
 --MAX TAXLOTS
