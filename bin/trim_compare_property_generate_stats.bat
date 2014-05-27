@@ -11,11 +11,14 @@ set data_workspace=%workspace%\data\%data_folder%
 
 ::ERASE FROM PROPERTY DATASETS
 
+echo "Trimming tax lots, this usually takes about an hour..."
+echo "Start time is: %time:~0,8%"
+
 ::Run python script that erases water and natural areas from taxlots and multi_family housing units
 python %code_workspace%\arcpy\trim_property.py %data_folder%
 
 echo "Examine trimmed tax lot and multi-family housing layers to ensure erasures have executed properly"
-echo "Press CTRL + C to cancel script or"
+echo "Press CTRL + C to cancel script or continue to load shapefiles"
 pause
 
 
@@ -72,25 +75,37 @@ shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\cty_fill.shp city | psql -h %pg_h
 shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\ugb.shp ugb | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 echo "Examine the newly create database 'transit_dev' and ensure that all shapefiles have been imported correctly"
-echo "Press CTRL + C to cancel script or"
+echo "Press CTRL + C to cancel script or continue to compile stats with SQL scripts"
 pause
 
 
-::GENERATE PROPERTY STATS AND SAVE TO CSV
+::GENERATE PROPERTY STATS
+
+echo "Selecting taxlots within walking distance of MAX stops and creating comparison groups, this usually takes about an hour..."
+echo "Start time is: %time:~0,8%"
 
 ::Select properties that meet criteria to be considered influenced bu MAX development and create 
 ::groups to compare the properties against
 set select_props_script=%code_workspace%\postgis\select_and_compare_properties.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %select_props_script%
 
+echo "Compiling final stats..."
+
 ::Compile and format the property stats
 set compile_stats_script=%code_workspace%\postgis\compile_property_stats.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %compile_stats_script%
 
-::Export the stats to CSV
+
+::EXPORT STATS TO CSV
+
+echo "Export stats to CSV?"
+echo "Press CTRL + C to cancel script or "
+pause
+
 set csv_workspace=%data_workspace%\csv
 if not exist %csv_workspace% mkdir %csv_workspace%
 
+::Assign names of tables to be exported to variables
 set stats_table1=pres_stats_w_near_max
 set stats_table2=pres_stats_minus_near_max
 

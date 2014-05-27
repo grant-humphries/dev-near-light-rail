@@ -46,10 +46,12 @@ set tag_transform=%code_workspace%\osmosis\tagtransform.xml
 
 ::Without 'call' command here this script will stop after the osmosis command
 ::See osmosis documentation here: http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Data_Manipulation_Tasks
+::The or-wa.osm extract is being trimmed to roughly the bounding box of the trimet district
 call osmosis ^
 	--read-xml %osm_data% ^
 	--wkv keyValueListFile=%key_value_list% ^
 	--tt %tag_transform% ^
+	--bounding-box left=-123.2 right=-122.2 top=45.7 bottom=45.2 ^
 	--write-pgsimp-0.6 host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
 
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed
