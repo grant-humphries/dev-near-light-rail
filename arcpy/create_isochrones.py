@@ -4,6 +4,7 @@
 #--------------------------------
 
 import os
+import sys
 import re
 import timing
 import arcpy
@@ -119,11 +120,11 @@ f_name = 'incpt_year'
 f_type = 'SHORT'
 arcpy.management.AddField(max_stops, f_name, f_type)
 
-# ***Note that stops within the CBD will not all have the same MAX year as stops within
-# that region were not all built at the same time (which is not the case for all other MAX zones)***
-fields = ['routes', 'max_zone', 'incpt_year']
+# Note that 'MAX Year' for stops within the CBD are varaible as stops within that region were not
+# all built at the same time (this is not the case for all other MAX zones)
+fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-	for routes, zone, year in cursor:
+	for stop_id, routes, zone, year in cursor:
 		if ':MAX Blue Line:' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
 			year = 1980
 		elif ':MAX Blue Line:' in routes and zone in ('West Suburbs', 'Southwest Portland'):
@@ -134,8 +135,12 @@ with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 			year = 1999
 		elif any(line in routes for line in (':MAX Green Line:', ':MAX Orange Line:')):
 			year = 2003
+		else:
+			print 'Stop ' + str(stop_id) + ' not assigned a MAX Year'
+			print 'Cannot proceed with out this assignment, examine code, data for errors'
+			sys.exit()
 
-		cursor.updateRow((routes, zone, year))
+		cursor.updateRow((stop_id, routes, zone, year))
 
 
 # Create a feature layer so that selections can be made on the data
