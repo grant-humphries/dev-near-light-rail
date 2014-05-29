@@ -44,19 +44,20 @@ createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
 set srid=2913
 
 ::MAX Stops 
-shp2pgsql -s %srid% -d -I %data_workspace%\max_stops.shp max_stops | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\max_stops.shp max_stops | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Walkshed Polygons (Isochrones)
-shp2pgsql -s %srid% -d -I %data_workspace%\max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\max_stop_isochrones.shp isochrones | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 echo "Loading trimmed tax lots shapefile, this can take up to an hour due to its large size"
 echo "Start time is: %time:~0,8%"
 
 ::Trimmed Taxlots, this takes a long time as the shp contains ~600,000 features, each with a lot of vertices
-shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -h %pg_host% -U %pg_user% -d %db_name%
+::The '-q' option used here with psql makes the output less verbose 
+shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing
-shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_multifam.shp trimmed_multifam | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_multifam.shp trimmed_multifam | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::TriMet Data
@@ -64,7 +65,7 @@ shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_multifam.shp trimmed_multifam
 set trimet_path=G:\TRIMET
 
 ::TriMet Service District Boundary
-shp2pgsql -s %srid% -d -I %trimet_path%\tm_fill.shp tm_district | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %trimet_path%\tm_fill.shp tm_district | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::RLIS Data
@@ -72,10 +73,10 @@ shp2pgsql -s %srid% -d -I %trimet_path%\tm_fill.shp tm_district | psql -h %pg_ho
 set rlis_path=G:\Rlis
 
 ::City Boundaries
-shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\cty_fill.shp city | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\cty_fill.shp city | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Urban Growth Boundary
-shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\ugb.shp ugb | psql -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -s %srid% -d -I %rlis_path%\BOUNDARY\ugb.shp ugb | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 echo "Examine the newly create database 'transit_dev' and ensure that all shapefiles have been imported correctly"
 echo "Press CTRL + C to cancel script or continue to compile stats with SQL scripts"
