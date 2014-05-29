@@ -238,8 +238,8 @@ def generateisochrones(locations, break_value):
 			i_cursor.insertRow((geom, stop_id, break_value))
 
 # Set parameters specific to each set of isochrones:
-# For now I'm using 2640 feet (half a mile) for the CBD walk limit, have experimented with using 2475', 3300' and 4125' and
-# am still working with Alan Lehto to finalize this number
+# For now I'm using 2640 feet (half a mile) for the CBD walk limit, have experimented with using 2475',
+# 3300' and 4125' and am still working with Alan Lehto to finalize this number
 cbd_max_distance = 2640
 generateisochrones(cbd_max, cbd_max_distance)
 
@@ -251,8 +251,7 @@ generateisochrones(outer_max, outer_max_distance)
 del i_cursor
 
 # Get value attributes from the original max stops data and add it to the new isochrones feature class, 
-# matching corresponding features.  Recall that the stop_id field has been copied to 'name' field and 
-# casted to string
+# matching corresponding features.
 fields = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year']
 rail_stop_dict = {}
 with arcpy.da.SearchCursor(max_stops, fields) as cursor:
