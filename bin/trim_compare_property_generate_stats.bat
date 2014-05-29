@@ -18,7 +18,7 @@ echo "Start time is: %time:~0,8%"
 python %code_workspace%\arcpy\trim_property.py %data_folder%
 
 echo "Examine trimmed tax lot and multi-family housing layers to ensure erasures have executed properly"
-echo "Press CTRL + C to cancel script or continue to load shapefiles"
+echo "Press CTRL + C to cancel script or continue create db and load shapefiles"
 pause
 
 
@@ -39,7 +39,7 @@ dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
 ::Create a database called 'transit_dev' based on the postgis template
 createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
 
-::Project Data (these were created in earlier phases of the project).  
+::Project Data (these were created in earlier phases of the project).
 ::Set input parameters
 set srid=2913
 
@@ -49,7 +49,10 @@ shp2pgsql -s %srid% -d -I %data_workspace%\max_stops.shp max_stops | psql -h %pg
 ::Walkshed Polygons (Isochrones)
 shp2pgsql -s %srid% -d -I %data_workspace%\max_stop_isochrones.shp isochrones | psql -h %pg_host% -U %pg_user% -d %db_name%
 
-::Trimmed Taxlots
+echo "Loading trimmed tax lots shapefile, this can take up to an hour due to its large size"
+echo "Start time is: %time:~0,8%"
+
+::Trimmed Taxlots, this takes a long time as the shp contains ~600,000 features, each with a lot of vertices
 shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing

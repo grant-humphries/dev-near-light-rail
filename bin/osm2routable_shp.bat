@@ -51,7 +51,7 @@ call osmosis ^
 	--read-xml %osm_data% ^
 	--wkv keyValueListFile=%key_value_list% ^
 	--tt %tag_transform% ^
-	--bounding-box left=-123.2 right=-122.2 top=45.7 bottom=45.2 ^
+	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 ^
 	--write-pgsimp-0.6 host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
 
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed

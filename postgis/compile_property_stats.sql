@@ -23,19 +23,19 @@ create table max_tls_no_dupes as
 --total value calculation, but include all lots in zone for area calculation
 drop table if exists grouped_max_tls cascade;
 create temp table grouped_max_tls as
-	select mt1.max_zone, 
+	select max_zone, 
 		--The Central Business District is the only MAX zone that has areas within it that are assigned
 		--to different MAX years, that issue is handled with the case statemnent below
-		(case when mt1.max_zone = 'Central Business District' then 'Variable (1980, 1999, 2003)'
-		 	else min(mt1.max_year)::text end) as max_year,
-		mt1.walk_dist, sum(mt1.totalval) as totalval,
+		(case when max_zone = 'Central Business District' then 'Variable (1980, 1999, 2003)'
+		 	else min(max_year)::text end) as max_year,
+		walk_dist, sum(totalval) as totalval,
 		(select	sum(mt2.habitable_acres)
 			from max_taxlots mt2
 			where mt2.max_zone = mt1.max_zone
 			group by mt2.max_zone) as habitable_acres
 	from max_taxlots mt1
 	where yearbuilt >= max_year
-	group by mt1.max_zone, mt1.walk_dist;
+	group by max_zone, walk_dist;
 
 --Add an entry that sums the total value of new construction taxlots and total area of all taxlots near
 --MAX to the table
@@ -82,7 +82,7 @@ create temp table grouped_compare_tls as
 	from comparison_taxlots ct1
 	where yearbuilt >= max_year
 		and tm_dist is true
-	group by ct1.max_zone;
+	group by max_zone;
 
 --TM District as whole (no double counting)
 insert into grouped_compare_tls
