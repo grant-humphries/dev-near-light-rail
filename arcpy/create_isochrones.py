@@ -21,16 +21,14 @@ env.addOutputsToMap = True
 project_folder = raw_input('Enter the name of the subfolder being used for this iteration of the project (should be in the form "YYYY_MM"): ')
 env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/' + project_folder
 
-# Create a 'temp' folder to hold intermediate datasets, and a 'csv' folder to hold spreadsheet (later
-# in the project) if they don't already exist
+# Create a 'temp' folder to hold intermediate datasets, and a 'csv' folder to hold output spreadsheets
+# (the latter won't be used until a later phase of this project), if they don't already exist
 new_folders = ['temp', 'csv']
 for folder in new_folders:
 	if not os.path.exists(os.path.join(env.workspace, folder)):
 		os.makedirs(os.path.join(env.workspace, folder))
 
-# **NOTE:** This feature class is all trimet stops, not just MAX stops when it is initially added, 
-# this will be corrected in the next step.  This shapefile is derived from the table current.stop_ext
-# in the trimet database on the trimet.maps2.org.
+# This comes from maps10.trimet.org's postgres database and only contains MAX stops in service
 max_stops = os.path.join(env.workspace, 'max_stops.shp')
 
 #-----------------------------------------------------------------------------------------------------
