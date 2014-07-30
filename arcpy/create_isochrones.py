@@ -133,8 +133,10 @@ with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 			year = 1997
 		elif ':MAX Yellow Line:' in routes:
 			year = 1999
-		elif any(line in routes for line in (':MAX Green Line:', ':MAX Orange Line:')):
+		elif ':MAX Green Line:' in routes:
 			year = 2003
+		elif ':MAX Orange Line:' in routes:
+			year = 2008
 		else:
 			print 'Stop ' + str(stop_id) + ' not assigned a MAX Year'
 			print 'Cannot proceed with out this assignment, examine code, data for errors'
