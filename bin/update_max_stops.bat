@@ -25,3 +25,8 @@ set shapefile_out=%data_workspace%\max_stops.shp
 set table_name=max_stops
 
 pgsql2shp -k -h %pg_host% -u %pg_user% -f %shapefile_out% %db_name% %table_name%
+
+::Convert orange line MAX stops from csv to shapefile (this step will go away once orange
+::MAX line is in service)
+set csv2shp_script=%code_workspace%\arcpy\orange_stops_csv2shp.py
+python %csv2shp_script%
