@@ -13,9 +13,8 @@ It's good practice to update this data each time this project is refreshed to en
 1. Update under-construction Orange Line stops (this step can be eliminated once they go into operation and are added to our spatial database stop tables)
     * Open Oracle SQL Developer and connect to the 'HAWAII' database.  Then go to the user 'TRANS' and run the query stored here `oracle/get_orange_max_stops.sql`
     * Save the result of the query as a csv in the following location `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` as 'projected_orange_line_stops.csv' (overwriting previously existing data is ok)
-    * Open the csv in ArcMap, display the x,y data, setting the projection to Oregon State Plane North (2913) and save it out as a shapefile with the same name (but .shp file extension) and in the same folder as the csv.
 
-2. Run the batch file stored here: `bin/update_max_stops.bat` to create a shapefile that has all of the MAX stops that are currently in operation.  A python script that will be run later in this process will merge the two stop datasets.
+2. Run the batch file stored here: `bin/update_max_stops.bat` to create a shapefile that has all of the MAX stops that are currently in operation.  This script will also convert the orange line stops from csv to shapefile.  A python script that will be run later in this process will merge the two stop datasets.
 
 ## Create Updated Streets and Trails Shapefile from OpenStreetMap Data
 
