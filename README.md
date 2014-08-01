@@ -26,7 +26,7 @@ This script grabs current OSM data, imports it into PostGIS using Osmosis, rebui
 
 As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is 'one-click' automation.
 
-1. In ArcMap right click OpenStreetMap shapefile created in the last step and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+1. In ArcMap right click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 2. In the next screen use the default name for the file
 3. Keep default of modeling turns
 4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
