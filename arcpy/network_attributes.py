@@ -10,6 +10,11 @@
 def footPermissions(foot, access, highway, indoor):
 	if foot in ('yes', 'designated', 'permissive'):
 		return False
+	# note that during the building of osm_foot shapefile all ways that were tagged highway=construction
+	# and that had a valid street type value in the construction tag had that value transferred to the
+	# highway field.  this is because we want to route along streets that are under construction in this
+	# analysis unless there finished type isn't specified (in which case the 'construction' value would
+	# persist in the highway field)
 	elif access == 'no' or highway in ('trunk', 'motorway', 'construction') or foot == 'no' or indoor == 'yes':
 		return True
 	else:

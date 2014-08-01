@@ -7,6 +7,7 @@ create table streets_and_trails (
 	to_node bigint,
 	name text,
 	highway text,
+	construction text,
 	access text,
 	foot text,
 	surface text, 
@@ -69,6 +70,9 @@ update streets_and_trails as snt set
 	highway = (select wt.v from way_tags wt
 		where snt.way_id = wt.way_id and wt.k = 'highway'),
 
+	construction = (select wt.v from way_tags wt
+		where snt.way_id = wt.way_id and wt.k = 'construction'),
+
 	access = (select wt.v from way_tags wt
 		where snt.way_id = wt.way_id and wt.k = 'access'),
 
@@ -82,3 +86,10 @@ update streets_and_trails as snt set
 		where snt.way_id = wt.way_id and wt.k = 'indoor');
 
 drop table sequence_count;
+
+--for this project we want to route along streets that are under construction if a valid street
+--type is indicated in the construction=* tag.  Thus the value in construction will be moved
+--to the highway column in those casew when highway=construction
+update streets_and_trails set highway = construction, construction = 'yes'
+	where highway = 'construction'
+		and construction in (select distinct highway from streets_and_trails);
