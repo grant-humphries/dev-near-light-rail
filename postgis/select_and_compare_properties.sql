@@ -17,33 +17,9 @@ alter table trimmed_taxlots add habitable_acres numeric;
 update trimmed_taxlots set habitable_acres = (ST_Area(geom) / 43560);
 
 --------------------------
---CREATE MAX TAXLOTS
---Spatially join taxlots and the isochrones (the former of which indicates area that are within a given
---wlaking distance of max stops).  The output is taxlots joined to attribute information of the isochrones
---that they intersect.  Note that there are intentionally duplicates in this table if a taxlot is within
---walking distance multiple stops that are in different 'MAX Zones', but duplicates of the same property
---joined to the same zone are eliminated
-drop table if exists max_taxlots cascade;
-create table max_taxlots with oids as
-	select tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
-		tt.yearbuilt, min(iso.incpt_year) as max_year, iso.max_zone, iso.walk_dist
-	from trimmed_taxlots tt
-		join isochrones iso
-		--This command joins two features only if they intersect
-		on ST_Intersects(tt.geom, iso.geom)
-	group by tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
-		tt.yearbuilt, iso.max_zone, iso.walk_dist;
-
---Add index to improve performance on comparisions done on this field
-drop index if exists tl_in_isos_gid_ix cascade;
-create index tl_in_isos_gid_ix on max_taxlots using BTREE (gid);
-
-vacuum analyze max_taxlots;
-
---------------------------
---CREATE COMPARISON TAXLOTS
-drop table if exists comparison_taxlots cascade;
-create table comparison_taxlots (
+--CREATE ANALYSIS TAXLOTS
+drop table if exists analysis_taxlots cascade;
+create table analysis_taxlots (
 	gid int references trimmed_taxlots, 
 	geom geometry,
 	tlid text,
@@ -55,17 +31,37 @@ create table comparison_taxlots (
 	max_year int,
 	max_zone text,
 	near_max boolean,
+	walk_dist numeric,
 	ugb boolean,
 	tm_dist boolean,
 	nine_cities boolean)
 with oids;
 
+--Spatially join tax lots and the isochrones (the former of which indicates area that are within a given
+--walking distance of max stops).  The output is tax lots joined to attribute information of the isochrones
+--that they intersect.  Note that there are intentionally duplicates in this table if a taxlot is within
+--walking distance multiple stops that are in different 'MAX Zones', but duplicates of a property within
+--the same MAX Zone are eliminated
+insert into analysis_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code, landuse,
+		yearbuilt, max_year, max_zone, near_max, walk_dist)
+	select tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
+		tt.yearbuilt, min(iso.incpt_year), iso.max_zone, true, iso.walk_dist
+	from trimmed_taxlots tt
+		join isochrones iso
+		--This command joins two features only if they intersect
+		on ST_Intersects(tt.geom, iso.geom)
+	group by tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
+		tt.yearbuilt, iso.max_zone, iso.walk_dist;
+
+--clean up after insert
+vacuum analyze analysis_taxlots;
+
 --should speed performance on nearest neighbor operation below
 cluster trimmed_taxlots using trimmed_taxlots_geom_gist;
 analyze trimmed_taxlots;
 
---Insert taxlots that are not within walking distance of max stops into comparison-taxlots 
-insert into comparison_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code,
+--Insert taxlots that are not within walking distance of max stops into analysis_taxlots 
+insert into analysis_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code,
 		landuse, yearbuilt, max_zone, near_max)
 	select tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, 
 		tt.prop_code, tt.landuse, tt.yearbuilt, 
@@ -77,12 +73,13 @@ insert into comparison_taxlots (gid, geom, tlid, totalval, habitable_acres, prop
 			order by tt.geom <-> mxs.geom 
 			limit 1), false
 	from trimmed_taxlots tt
-	where tt.gid not in (select mt.gid from max_taxlots mt);
+	where tt.gid not in (select gid from analysis_taxlots);
 
-vacuum analyze comparison_taxlots;
+--clean up after inserts
+vacuum analyze analysis_taxlots;
 
 --Assign the max year based on the max zone, this method is being used because repeating the 
---nearest neighbor method to get the year is far more time consuming
+--nearest neighbor method to get the year is far more computationally intensive
 
 --Create a mapping from MAX zones to MAX years. Note that there are multiple years that map to the
 --CBD zone and in this case the minimum year will be returned
@@ -92,31 +89,29 @@ create temp table max_year_zone_mapping as
 	from max_stops
 	group by max_zone;
 
---Index is added to decrease match time below
+--Indices are added to decrease match time below
 drop index if exists max_mapping_ix cascade;
 create index max_mapping_ix on max_year_zone_mapping using BTREE (max_zone);
 
---Populate max_year column based on max_year_zone_mapping table.  Again there are multiple years that
---map to the CBD, but most of those tax lots are within walking distance of max stop and are coming
---from the max-taxlots table.
-update comparison_taxlots ct set max_year = yzm.max_year
+drop index if exists a_taxlot_near_max_ix cascade;
+create index a_taxlot_near_max_ix on analysis_taxlots using BTREE (near_max);
+
+--Populate max_year column for properties outside walking distance of max stops based on 
+--max_year_zone_mapping table.  Note that is value is already populated for properties within
+--walking distance of MAX and should not be overwitten
+update analysis_taxlots atx set max_year = yzm.max_year
 	from max_year_zone_mapping yzm
-	where yzm.max_zone = ct.max_zone;
+	where yzm.max_zone = atx.max_zone
+		--this clause is very important, if not present decision to build year for tax lots within
+		--walking distance of max would be overwritten which would lead to incorrect results
+		and atx.near_max is false;
 
---Insert max-taxlots into comparison-taxlots, there will be duplicates in cases where tax lots are
---within walking distance of two stops in different max zones
-insert into comparison_taxlots (gid, geom, tlid, totalval, yearbuilt, habitable_acres, prop_code,
-		landuse, max_zone, max_year, near_max)
-	select mt.gid, mt.geom, mt.tlid, mt.totalval, mt.yearbuilt, mt.habitable_acres, 
-		mt.prop_code, mt.landuse, mt.max_zone, mt.max_year, true
-	from max_taxlots mt;
+--Add index to improve performance on upcoming spatial comparisons
+drop index if exists a_taxlot_gix cascade;
+create index a_taxlot_gix on analysis_taxlots using GIST (geom);
 
---Add index to improve performance on upcming spatial comparisons
-drop index if exists tl_compare_gix cascade;
-create index tl_compare_gix on comparison_taxlots using GIST (geom);
-
-cluster comparison_taxlots using tl_compare_gix;
-vacuum analyze comparison_taxlots;
+cluster analysis_taxlots using a_taxlot_gix;
+vacuum analyze analysis_taxlots;
 
 --Temp table will turn the 9 most populous cities in the TM district into a single geometry
 drop table if exists nine_cities cascade;
@@ -128,17 +123,17 @@ create temp table nine_cities as
  			'Tualatin', 'Tigard', 'Lake Oswego', 'Oregon City', 'West Linn')) as collapsable_city
 	group by collapser;
 
---Determine if each of the comparison texlots is in the trimet district, urban growth boundary, 
+--Determine if each of the analysis taxlots is in the trimet district, urban growth boundary, 
 --and city limits of the nine biggest cities in the Portland metro area (Oregon only)
-update comparison_taxlots as ct set
+update analysis_taxlots as atx set
 	--Returns True if a taxlot intersects the urban growth boundary
-	ugb = (select ST_Intersects(ugb.geom, ct.geom)
+	ugb = (select ST_Intersects(ugb.geom, atx.geom)
 		from ugb),
 	--Returns True if a taxlot intersects the TriMet's service district boundary
-	tm_dist = (select ST_Intersects(td.geom, ct.geom)
+	tm_dist = (select ST_Intersects(td.geom, atx.geom)
 		from tm_district td),
 	--Returns True if a taxlot intersects one of the nine most populous cities in the TM dist
-	nine_cities = (select ST_Intersects(nc.geom, ct.geom)
+	nine_cities = (select ST_Intersects(nc.geom, atx.geom)
 		from nine_cities nc);
 
 
@@ -152,29 +147,12 @@ alter table trimmed_multifam add habitable_acres numeric;
 update trimmed_multifam set habitable_acres = (ST_Area(geom) / 43560);
 
 --------------------------
---CREATE MAX MULTIFAM
-drop table if exists max_multifam cascade;
-create table max_multifam with oids as
-	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres, tm.mixed_use,
-		tm.yearbuilt, min(iso.incpt_year) as max_year, iso.max_zone, iso.walk_dist
-	from trimmed_multifam tm
-		join isochrones iso
-		on ST_Intersects(tm.geom, iso.geom)
-	group by tm.gid, tm.geom, tm.metro_id, tm.units, tm.yearbuilt, tm.unit_type, tm.habitable_acres, 
-		tm.mixed_use, iso.max_zone, iso.walk_dist;
-
-drop index if exists mf_in_isos_gid_ix cascade;
-create index mf_in_isos_gid_ix on max_multifam using BTREE (gid);
-
-vacuum analyze max_multifam;
-
---------------------------
---CREATE COMPARISON MULTIFAM
---Divisors for overall area comparisons will still come from comparison_taxlots, but numerators
+--CREATE ANALYSIS MULTIFAM
+--Divisors for overall area comparisons will still come from analysis_taxlots, but numerators
 --will come from the table below.  This because the multi-family layer doesn't have full coverage
---of all buildable land in the region the way the taxlot data does
-drop table if exists comparison_multifam cascade;
-create table comparison_multifam (
+--of all buildable land in the region the way the tax lot data does
+drop table if exists analysis_multifam cascade;
+create table analysis_multifam (
 	gid int references trimmed_multifam, 
 	geom geometry,
 	metro_id int,
@@ -186,16 +164,29 @@ create table comparison_multifam (
 	max_year int,
 	max_zone text,
 	near_max boolean,
+	walk_dist numeric,
 	ugb boolean,
 	tm_dist boolean,
 	nine_cities boolean)
 with oids;
 
+insert into analysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres, mixed_use, 
+		yearbuilt, max_year, max_zone, near_max, walk_dist)
+	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres, tm.mixed_use,
+		tm.yearbuilt, min(iso.incpt_year), iso.max_zone, true, iso.walk_dist
+	from trimmed_multifam tm
+		join isochrones iso
+		on ST_Intersects(tm.geom, iso.geom)
+	group by tm.gid, tm.geom, tm.metro_id, tm.units, tm.yearbuilt, tm.unit_type, tm.habitable_acres, 
+		tm.mixed_use, iso.max_zone, iso.walk_dist;
+
+vacuum analyze analysis_multifam;
+
 cluster trimmed_multifam using trimmed_multifam_geom_gist;
 analyze trimmed_multifam;
 
---Insert multifam units outside of walking distance into the comparison-multifam
-insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
+--Insert multifam units outside of walking distance into the analysis-multifam
+insert into anlysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
 		mixed_use, yearbuilt, max_zone, near_max)
 	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres,
 		tm.mixed_use, tm.yearbuilt,
@@ -205,38 +196,32 @@ insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitabl
 			order by tm.geom <-> mxs.geom 
 			limit 1), false
 	from trimmed_multifam tm
-	where tm.gid not in (select mm.gid from max_multifam mm);
+	where tm.gid not in (select gid from analysis_multifam);
 
-vacuum analyze comparison_multifam;
+vacuum analyze analysis_multifam;
 
 --Populate max_year column for properties outside max stop walking distance based on
 --max_year_zone_mapping table
-update comparison_multifam cm set max_year = yzm.max_year
+update analyis_multifam amf set max_year = yzm.max_year
 	from max_year_zone_mapping yzm
-	where yzm.max_zone = cm.max_zone;
-
---Insert max-multifam units into comparison-multifam (there will be some duplicates)
-insert into comparison_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
-		mixed_use, yearbuilt, max_year, max_zone, near_max)
-	select mm.gid, mm.geom, mm.metro_id, mm.units, mm.unit_type, mm.habitable_acres,
-		mm.mixed_use, mm.yearbuilt, mm.max_year, mm.max_zone, true
-	from max_multifam mm;
+	where yzm.max_zone = amf.max_zone
+		and amf.near_max is false;
 
 --Should improve performance on upcoming spatial comparisons
-drop index if exists mf_compare_gix cascade;
-create index mf_compare_gix on comparison_multifam using GIST (geom);
+drop index if exists a_multifam_gix cascade;
+create index a_multifam_gix on analysis_multifam using GIST (geom);
 
-cluster comparison_multifam using mf_compare_gix;
-vacuum analyze comparison_multifam;
+cluster analysis_multifam using a_multifam_gix;
+vacuum analyze analysis_multifam;
 
-update comparison_multifam as cm set
-	ugb = (select ST_Intersects(ugb.geom, cm.geom)
+update analysis_multifam as amf set
+	ugb = (select ST_Intersects(ugb.geom, amf.geom)
 		from ugb),
 
-	tm_dist = (select ST_Intersects(td.geom, cm.geom)
+	tm_dist = (select ST_Intersects(td.geom, amf.geom)
 		from tm_district td),
 
-	nine_cities = (select ST_Intersects(nc.geom, cm.geom)
+	nine_cities = (select ST_Intersects(nc.geom, amf.geom)
 		from nine_cities nc);
 
 --Temp table is no longer needed
