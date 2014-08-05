@@ -89,7 +89,7 @@ begin
 		grouping_field := subset;
 		taxlot_table := 'unique_analysis_taxlots ';
 		multifam_table := 'unique_analysis_multifam ';
-		group_rank := '1';
+		zone_rank := '1';
 	else
 		raise notice 'invalid input for ''group_method'' parameter,';
 		raise notice 'enter ''by_zone'' or ''by_subset''.';
@@ -180,4 +180,4 @@ create table pres_stats_minus_near_max with oids as
 		OR group_desc = 'Properties in MAX Walkshed'
 	order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
---ran in 72,545 ms on 8/5/14
+--ran in 73,784 ms on 8/5/14
