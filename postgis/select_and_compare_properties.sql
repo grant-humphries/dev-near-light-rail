@@ -186,7 +186,7 @@ cluster trimmed_multifam using trimmed_multifam_geom_gist;
 analyze trimmed_multifam;
 
 --Insert multifam units outside of walking distance into the analysis-multifam
-insert into anlysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
+insert into analysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
 		mixed_use, yearbuilt, max_zone, near_max)
 	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres,
 		tm.mixed_use, tm.yearbuilt,
@@ -202,7 +202,7 @@ vacuum analyze analysis_multifam;
 
 --Populate max_year column for properties outside max stop walking distance based on
 --max_year_zone_mapping table
-update analyis_multifam amf set max_year = yzm.max_year
+update analysis_multifam amf set max_year = yzm.max_year
 	from max_year_zone_mapping yzm
 	where yzm.max_zone = amf.max_zone
 		and amf.near_max is false;
