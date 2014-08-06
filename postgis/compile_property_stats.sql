@@ -13,11 +13,10 @@
 drop table if exists unique_analysis_taxlots cascade;
 create table unique_analysis_taxlots with oids as
 	select gid, geom, totalval, habitable_acres, yearbuilt, min(max_year) as max_year, 
-			null::text as max_zone, near_max, null::text as walk_dist, tm_dist,
-			ugb, nine_cities
-		from analysis_taxlots
-		group by gid, geom, totalval, habitable_acres, yearbuilt, near_max, tm_dist, 
-			ugb, nine_cities;
+		null::text as max_zone, near_max, min(walk_dist) as walk_dist, tm_dist, ugb, nine_cities
+	from analysis_taxlots
+	group by gid, geom, totalval, habitable_acres, yearbuilt, near_max, tm_dist, 
+		ugb, nine_cities;
 
 drop table if exists unique_analysis_multifam cascade;
 create table unique_analysis_multifam with oids as
@@ -110,7 +109,7 @@ begin
 				|| 'SELECT ' || quote_literal(group_desc) || '::text, '
 					|| 'COALESCE(STRING_AGG(DISTINCT max_zone, '', ''), ''All Zones''), '
 					|| 'ARRAY_TO_STRING(ARRAY_AGG(DISTINCT max_year ORDER BY max_year), '', ''), '
-					|| 'COALESCE(STRING_AGG(DISTINCT walk_dist::int::text, '', ''), ''n/a''), '
+					|| 'STRING_AGG(DISTINCT COALESCE(walk_dist::int::text, ''n/a''), '' & ''), '
 					|| 'SUM(totalval), '
 					|| '(SELECT SUM(units) '
 						|| 'FROM ' || multifam_table
@@ -163,7 +162,7 @@ select insert_property_stats('nine_cities', 'by_subset', false);
 drop table if exists pres_stats_w_near_max cascade;
 create table pres_stats_w_near_max with oids as
 	select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-		round(habitable_acres, 2),
+		round(habitable_acres, 2) as habitable_acres,
 		round(totalval / habitable_acres) as normalized_totval, 
 		round(housing_units / habitable_acres, 2) as normalized_units
 	from property_stats
@@ -173,7 +172,7 @@ create table pres_stats_w_near_max with oids as
 drop table if exists pres_stats_minus_near_max cascade;
 create table pres_stats_minus_near_max with oids as
 	select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-		round(habitable_acres, 2),
+		round(habitable_acres, 2) as habitable_acres,
 		round(totalval / habitable_acres) as normalized_totval, 
 		round(housing_units / habitable_acres, 2) as normalized_units
 	from property_stats
