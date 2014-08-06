@@ -13,7 +13,8 @@
 drop table if exists unique_analysis_taxlots cascade;
 create table unique_analysis_taxlots with oids as
 	select gid, geom, totalval, habitable_acres, yearbuilt, min(max_year) as max_year, 
-			null::text as max_zone, near_max, null::text as walk_dist, tm_dist, ugb, nine_cities
+			null::text as max_zone, near_max, null::text as walk_dist, tm_dist,
+			ugb, nine_cities
 		from analysis_taxlots
 		group by gid, geom, totalval, habitable_acres, yearbuilt, near_max, tm_dist, 
 			ugb, nine_cities;
