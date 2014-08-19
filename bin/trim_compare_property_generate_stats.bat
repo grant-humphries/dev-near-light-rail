@@ -49,15 +49,18 @@ shp2pgsql -s %srid% -d -I %data_workspace%\max_stops.shp max_stops | psql -q -h 
 ::Walkshed Polygons (Isochrones)
 shp2pgsql -s %srid% -d -I %data_workspace%\max_stop_isochrones.shp isochrones | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
-echo "Loading trimmed tax lots shapefile, this can take up to an hour due to its large size"
+echo "Loading trimmed tax lots shapefile"
 echo "Start time is: %time:~0,8%"
 
-::Trimmed Taxlots, this takes a long time as the shp contains ~600,000 features, each with a lot of vertices
-::The '-q' option used here with psql makes the output less verbose 
-shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -q -h %pg_host% -U %pg_user% -d %db_name%
+::Trimmed Taxlots, this traditionally took a long time as the shp contains ~600,000 features, each
+::with a lot of vertices, however I've now read about the -D parameter of shp2psql which should
+::GREATLY improve performance:
+::http://gis.stackexchange.com/questions/109564/what-is-the-best-hack-for-importing-large-datasets-into-postgis?utm_content=buffer6bdf0&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer
+::The '-q' option used here with psql makes the output less verbose
+shp2pgsql -D -I -s %srid% %data_workspace%\trimmed_taxlots.shp trimmed_taxlots | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::Trimmed Multi-family Housing
-shp2pgsql -s %srid% -d -I %data_workspace%\trimmed_multifam.shp trimmed_multifam | psql -q -h %pg_host% -U %pg_user% -d %db_name%
+shp2pgsql -D -I -s %srid% %data_workspace%\trimmed_multifam.shp trimmed_multifam | psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 
 ::TriMet Data
