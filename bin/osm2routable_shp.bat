@@ -41,9 +41,6 @@ set osm_data=G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm
 set key_value_list=%code_workspace%\osmosis\keyvaluelistfile.txt
 set tag_transform=%code_workspace%\osmosis\tagtransform.xml
 
-::TO DO!!!!!!!!!!: have osmosis clip the input data to a smaller bounding box, the Salem and Vancouver
-::areas aren't needed
-
 ::Without 'call' command here this script will stop after the osmosis command
 ::See osmosis documentation here: http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Data_Manipulation_Tasks
 ::The or-wa.osm extract is being trimmed to roughly the bounding box of the trimet district
