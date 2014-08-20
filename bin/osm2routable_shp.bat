@@ -27,7 +27,6 @@ createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
 ::can import osm data into.  The file path below is in quotes to properly handled the spaces that
 ::are in the name
 set osmosis_schema_script="C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
-
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_schema_script%
 
 ::Run osmosis on the OSM GeoFrabrik extract that Frank downloads nightly. The output will only
@@ -37,7 +36,6 @@ psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_schema_script%
 ::sure to indicate the schema that osmosis is importing into, in this case it's the pg_simple_schema
 ::that was created by the script run above
 set osm_data=G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm
-
 set key_value_list=%code_workspace%\osmosis\keyvaluelistfile.txt
 set tag_transform=%code_workspace%\osmosis\tagtransform.xml
 
@@ -55,11 +53,9 @@ call osmosis ^
 ::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'.
 ::This script will also reproject the data to Oregon State Plane North (2913)
 set build_paths_script=%code_workspace%\postgis\compose_paths.sql
-
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %build_paths_script%
 
 ::Export the street and trails table to a shapefile
 set shapefile_out=%data_workspace%\osm_foot.shp
 set table_name=streets_and_trails
-
 pgsql2shp -k -h %pg_host% -u %pg_user% -P %pgpassword% -f %shapefile_out% %db_name% %table_name%
