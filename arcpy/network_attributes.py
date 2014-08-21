@@ -1,7 +1,7 @@
 # Settings for this network attribute:
 
 # NAME: 'foot_permissions' NOTE!!!: This attribute must have this exact name or the python script
-# that generates the isoscrones won't be able to find it
+# that generates the isochrones won't be able to find it
 # USAGE TYPE: Restriction
 # RESTRICTION USAGE: Prohibited
 # USE BY DEFAULT?: Yes
