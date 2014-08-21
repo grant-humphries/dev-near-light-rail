@@ -29,8 +29,8 @@ createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
 set osmosis_schema_script="C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_schema_script%
 
-::Run osmosis on the OSM GeoFrabrik extract that Frank downloads nightly. The output will only
-::include features that have one or more of the tags in the file keyvaluelistfile.txt. This file
+::Run osmosis on the OSM extract that is downloaded nightly using the Overpass API. The output will
+::only include features that have one or more of the tags in the file keyvaluelistfile.txt. This file
 ::contains osm tags as key-value pair separated by a period with on per line.  Only tags that are
 ::the tagtransform.xml file will be preserved on the features that are brought through.  Also be
 ::sure to indicate the schema that osmosis is importing into, in this case it's the pg_simple_schema
