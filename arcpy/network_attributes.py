@@ -6,7 +6,11 @@
 # RESTRICTION USAGE: Prohibited
 # USE BY DEFAULT?: Yes
 
-# Note that for this function 'True' means walking is prohibited and 'False' means that it's allowed
+# EVALUATORS (click Evaluators button to access these settings): there will be two items used in
+# evaluators that have all of the same values except for the 'Direction' field
+# Source: 'osm_foot', Direction: item 1 - 'From-To', item 2 - 'To-From', Element: 'Edge', Type 'Field',
+# Value: (function below).  Note that for this function 'True' means walking is prohibited and 'False'
+# means that it's allowed
 def footPermissions(foot, access, highway, indoor):
 	if foot in ('yes', 'designated', 'permissive'):
 		return False
@@ -22,7 +26,6 @@ def footPermissions(foot, access, highway, indoor):
 
 footPermissions(!foot!, !access!, !highway!, !indoor!)
 
-# DIRECTION: both
 
 # UPDATE 02/2014 - ***I refactored that generates the isocrones so adding the walk minutes attribute is
 # no longer compulsory.***  I'm leaving the code in place in case walk minutes are ever needed.
@@ -33,21 +36,12 @@ footPermissions(!foot!, !access!, !highway!, !indoor!)
 # DATA TYPE: Double
 # USE BY DEFAULT?: No
 
+# EVALUATORS:
+# Direction: item 1 - 'From-To', item 2 - 'To-From', Element: 'Edge', Type 'Field', Value: (function below)
+
 # length is assumed to be in feet and walk speed is 3 miles per hour in this case
 def walkMinutes(length):
 	walk_time = length / (5280 * (3 / float(60)))
 	return walk_time
 
 walkMinutes(!Shape!)
-
-# DIRECTION: both
-
-# NOTE: Building the network dataset may not work if you set the units for the walk length attribute
-# to minutes, or if you set it at all, this seems to be a bug.  I work around that I have found is to 
-# leave the units for walk distance undefined in the wizard, then go back and open the network dataset
-# properties in the arc catalog window and assign them there and rebuild the network
-
-# UPDATE 02/2014: leading spaces were not present on this iteration
-# Also the PostGIS streets and trails layer is being saved as a shape file by QGIS is currently adding 
-# leading spaces in front of the attributes values, these must be removed for the functions above to work
-# (use python 'field'.strip() in field calculator)
