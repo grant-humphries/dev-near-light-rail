@@ -19,7 +19,7 @@ set /p pgpassword="Enter postgres password:"
 
 
 ::Execute functions
-call:dropCreateDb
+call:createPostgisDb
 call:loadShapefiles
 call:geoprocess_properties
 call:generateStats
@@ -37,12 +37,15 @@ goto:eof
 ::Great info on writing functions in batch files here:
 ::http://www.dostips.com/DtTutoFunctions.php
 
-:dropCreateDb
-::Drop the database if it exists then (re)create it
+:createPostgisDb
+::Drop the database if it exists then (re)create it and enable postgis
 echo "Creating database..."
 
 dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
-createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
+createdb -O %pg_user% -h %pg_host% -U %pg_user% %db_name%
+
+set q="CREATE EXTENSION postgis;"
+psql -h %pg_host% -U %pg_user% -d %db_name% -c %q%
 
 goto:eof
 
