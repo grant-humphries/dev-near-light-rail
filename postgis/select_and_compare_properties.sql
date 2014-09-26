@@ -5,26 +5,15 @@
 
 --***Taxlots***
 
---Since parks and water bodies have been 'erased' for taxlots in previous steps the attribute that
---ships with RLIS and contains the area of the feature is no longer valid and the area will be
---recalculated below
-alter table trimmed_taxlots drop column if exists habitable_acres cascade;
-alter table trimmed_taxlots add habitable_acres numeric;
-
---Since this data set is in the State Plane projection the output of the ST_Area tool will be in 
---square feet, I want acres and thus will divide that number by 43,560 as that's how many square 
---feet are in an acre
-update trimmed_taxlots set habitable_acres = (ST_Area(geom) / 43560);
-
 --------------------------
 --CREATE ANALYSIS TAXLOTS
 drop table if exists analysis_taxlots cascade;
 create table analysis_taxlots (
-	gid int references trimmed_taxlots, 
+	gid int references taxlots_no_orca, 
 	geom geometry,
 	tlid text,
 	totalval numeric,
-	habitable_acres numeric,
+	gis_acres numeric,
 	prop_code text,
 	landuse text,
 	yearbuilt int,
@@ -42,38 +31,40 @@ with oids;
 --that they intersect.  Note that there are intentionally duplicates in this table if a taxlot is within
 --walking distance multiple stops that are in different 'MAX Zones', but duplicates of a property within
 --the same MAX Zone are eliminated
-insert into analysis_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code, landuse,
+insert into analysis_taxlots (gid, geom, tlid, totalval, gis_acres, prop_code, landuse,
 		yearbuilt, max_year, max_zone, near_max, walk_dist)
-	select tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
-		tt.yearbuilt, min(iso.incpt_year), iso.max_zone, true, iso.walk_dist
-	from trimmed_taxlots tt
+	select tno.gid, tno.geom, tno.tlid, tno.totalval, tno.gis_acres, tno.prop_code, tno.landuse,
+		tno.yearbuilt, min(iso.incpt_year), iso.max_zone, true, iso.walk_dist
+	from taxlots_no_orca tno
 		join isochrones iso
 		--This command joins two features only if they intersect
-		on ST_Intersects(tt.geom, iso.geom)
-	group by tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, tt.prop_code, tt.landuse,
-		tt.yearbuilt, iso.max_zone, iso.walk_dist;
+		on ST_Intersects(tno.geom, iso.geom)
+	group by tno.gid, tno.geom, tno.tlid, tno.totalval, tno.gis_acres, tno.prop_code, tno.landuse,
+		tno.yearbuilt, iso.max_zone, iso.walk_dist;
 
 --clean up after insert
 vacuum analyze analysis_taxlots;
 
---should speed performance on nearest neighbor operation below
-cluster trimmed_taxlots using trimmed_taxlots_geom_gist;
-analyze trimmed_taxlots;
+analyze taxlots_no_orca;
 
 --Insert taxlots that are not within walking distance of max stops into analysis_taxlots 
-insert into analysis_taxlots (gid, geom, tlid, totalval, habitable_acres, prop_code,
-		landuse, yearbuilt, max_zone, near_max)
-	select tt.gid, tt.geom, tt.tlid, tt.totalval, tt.habitable_acres, 
-		tt.prop_code, tt.landuse, tt.yearbuilt, 
+with ordered_stops as (
+	select tno.gid, mxs.max_zone, mxs.incpt_year as max_year
+	from taxlots_no_orca tno, max_stops mxs
+	where ST_DWithin(tno.geom, mxs.geom, 100000)
+	order by tno.gid, ST_Distance(tno.geom, mxs.geom))
+insert into analysis_taxlots (gid, geom, tlid, totalval, gis_acres, prop_code,
+		landuse, yearbuilt, max_year, max_zone, near_max)
+	select tno.gid, tno.geom, tno.tlid, tno.totalval, tno.gis_acres, 
+		tno.prop_code, tno.landuse, tno.yearbuilt, 
 		--Finds nearest neighbor in the max stops data set for each taxlot and returns the stop's 
 		--corresponding 'MAX Zone' (a zone was assigned to each stop earlier in the project),
 		--derived from (http://gis.stackexchange.com/questions/52792/calculate-min-distance-between-points-in-postgis)
-		(select mxs.max_zone
-			from max_stops mxs 
-			order by tt.geom <-> mxs.geom 
-			limit 1), false
-	from trimmed_taxlots tt
-	where tt.gid not in (select gid from analysis_taxlots);
+		n_stop.max_year, n_stop.max_zone, false
+	from taxlots_no_orca tno, 
+		(select distinct on (gid) * from ordered_stops) n_stop
+	where tno.gid = n_stop.gid
+		and tno.gid not in (select gid from analysis_taxlots);
 
 --clean up after inserts
 vacuum analyze analysis_taxlots;
@@ -141,10 +132,10 @@ update analysis_taxlots as atx set
 --***Multi-Family Housing Units***
 --Works off the same framework as what is used for tax lots above
 
-alter table trimmed_multifam drop column if exists habitable_acres cascade;
-alter table trimmed_multifam add habitable_acres numeric;
+alter table trimmed_multifam drop column if exists gis_acres cascade;
+alter table trimmed_multifam add gis_acres numeric;
 
-update trimmed_multifam set habitable_acres = (ST_Area(geom) / 43560);
+update trimmed_multifam set gis_acres = (ST_Area(geom) / 43560);
 
 --------------------------
 --CREATE ANALYSIS MULTIFAM
@@ -158,7 +149,7 @@ create table analysis_multifam (
 	metro_id int,
 	units int,
 	unit_type text,
-	habitable_acres numeric,
+	gis_acres numeric,
 	mixed_use int,
 	yearbuilt int,
 	max_year int,
@@ -170,14 +161,14 @@ create table analysis_multifam (
 	nine_cities boolean)
 with oids;
 
-insert into analysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres, mixed_use, 
+insert into analysis_multifam (gid, geom, metro_id, units, unit_type, gis_acres, mixed_use, 
 		yearbuilt, max_year, max_zone, near_max, walk_dist)
-	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres, tm.mixed_use,
+	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.gis_acres, tm.mixed_use,
 		tm.yearbuilt, min(iso.incpt_year), iso.max_zone, true, iso.walk_dist
 	from trimmed_multifam tm
 		join isochrones iso
 		on ST_Intersects(tm.geom, iso.geom)
-	group by tm.gid, tm.geom, tm.metro_id, tm.units, tm.yearbuilt, tm.unit_type, tm.habitable_acres, 
+	group by tm.gid, tm.geom, tm.metro_id, tm.units, tm.yearbuilt, tm.unit_type, tm.gis_acres, 
 		tm.mixed_use, iso.max_zone, iso.walk_dist;
 
 vacuum analyze analysis_multifam;
@@ -186,14 +177,14 @@ cluster trimmed_multifam using trimmed_multifam_geom_gist;
 analyze trimmed_multifam;
 
 --Insert multifam units outside of walking distance into the analysis-multifam
-insert into analysis_multifam (gid, geom, metro_id, units, unit_type, habitable_acres,
+insert into analysis_multifam (gid, geom, metro_id, units, unit_type, gis_acres,
 		mixed_use, yearbuilt, max_zone, near_max)
-	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.habitable_acres,
+	select tm.gid, tm.geom, tm.metro_id, tm.units, tm.unit_type, tm.gis_acres,
 		tm.mixed_use, tm.yearbuilt,
 		--get max zone for nearest stop using nearest neighbor
 		(select mxs.max_zone
 			from max_stops mxs 
-			order by tm.geom <-> mxs.geom 
+			order by mxs.geom <-> tm.geom
 			limit 1), false
 	from trimmed_multifam tm
 	where tm.gid not in (select gid from analysis_multifam);

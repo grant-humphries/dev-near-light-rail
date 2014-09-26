@@ -11,15 +11,44 @@
 --when properties are within walking distance of multiple stops that have different 'max zone'
 --associations, these will be used to remove double counting from regional totals
 drop table if exists unique_analysis_taxlots cascade;
-create table unique_analysis_taxlots with oids as
-	select gid, geom, totalval, habitable_acres, yearbuilt, min(max_year) as max_year, 
+create table unique_analysis_taxlots (
+	--using the from the original taxlots dataset and setting 
+	--them as the primary key ensures no duplicates
+	gid int primary key references taxlots,
+	geom geometry,
+	gis_acres numeric,
+	yearbuilt int,
+	max_year int,
+	max_zone text,
+	near_max boolean,
+	walk_dist numeric,
+	tm_dist boolean,
+	ugb boolean,
+	nine_cities boolean
+);
+
+insert into unique_analysis_taxlots
+	select gid, geom, totalval, gis_acres, yearbuilt, min(max_year) as max_year, 
 		null::text as max_zone, near_max, min(walk_dist) as walk_dist, tm_dist, ugb, nine_cities
 	from analysis_taxlots
-	group by gid, geom, totalval, habitable_acres, yearbuilt, near_max, tm_dist, 
+	group by gid, geom, totalval, gis_acres, yearbuilt, near_max, tm_dist, 
 		ugb, nine_cities;
 
 drop table if exists unique_analysis_multifam cascade;
-create table unique_analysis_multifam with oids as
+create table unique_analysis_multifam (
+	gid int primary key references multifamily,
+	geom geometry,
+	units int,
+	yearbuilt int,
+	max_year int,
+	max_zone text,
+	near_max boolean,
+	tm_dist boolean,
+	ugb boolean,
+	nine_cities boolean
+);
+
+insert into unique_analysis_multifam
 	select gid, geom, units, yearbuilt, min(max_year) as max_year, null::text as max_zone, 
 		near_max, tm_dist, ugb, nine_cities
 	from analysis_multifam
@@ -34,7 +63,7 @@ create table property_stats (
 	walk_dist text,
 	totalval numeric,
 	housing_units int,
-	habitable_acres numeric,
+	gis_acres numeric,
 	--these fields are for ordering the rows in the final stats table
 	group_rank int,
 	zone_rank int)
@@ -118,7 +147,7 @@ begin
 							|| zone_clause
 							|| not_near_max_clause
 						|| 'GROUP BY ' || grouping_field || '), '
-					|| '(SELECT SUM(habitable_acres) '
+					|| '(SELECT SUM(gis_acres) '
 						|| 'FROM ' || taxlot_table
 						|| 'WHERE ' || subset || ' IS TRUE '
 							|| zone_clause
@@ -162,9 +191,9 @@ select insert_property_stats('nine_cities', 'by_subset', false);
 drop table if exists pres_stats_w_near_max cascade;
 create table pres_stats_w_near_max with oids as
 	select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-		round(habitable_acres, 2) as habitable_acres,
-		round(totalval / habitable_acres) as normalized_totval, 
-		round(housing_units / habitable_acres, 2) as normalized_units
+		round(gis_acres, 2) as gis_acres,
+		round(totalval / gis_acres) as normalized_totval, 
+		round(housing_units / gis_acres, 2) as normalized_units
 	from property_stats
 	where group_desc not like '%not in MAX Walkshed%'
 	order by zone_rank desc, max_zone, group_rank desc, group_desc;
@@ -172,9 +201,9 @@ create table pres_stats_w_near_max with oids as
 drop table if exists pres_stats_minus_near_max cascade;
 create table pres_stats_minus_near_max with oids as
 	select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-		round(habitable_acres, 2) as habitable_acres,
-		round(totalval / habitable_acres) as normalized_totval, 
-		round(housing_units / habitable_acres, 2) as normalized_units
+		round(gis_acres, 2) as gis_acres,
+		round(totalval / gis_acres) as normalized_totval, 
+		round(housing_units / gis_acres, 2) as normalized_units
 	from property_stats
 	where group_desc like '%not in MAX Walkshed%'
 		OR group_desc = 'Properties in MAX Walkshed'
