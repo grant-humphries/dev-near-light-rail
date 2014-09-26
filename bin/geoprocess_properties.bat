@@ -34,6 +34,8 @@ goto:eof
 :: ***Function section begins below***
 ::---------------------------------------
 
+::Great info on writing functions in batch files here:
+::http://www.dostips.com/DtTutoFunctions.php
 
 :dropCreateDb
 ::Drop the database if it exists then (re)create it

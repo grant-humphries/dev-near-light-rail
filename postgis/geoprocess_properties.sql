@@ -45,7 +45,17 @@ insert into analysis_taxlots (gid, geom, tlid, totalval, gis_acres, prop_code, l
 --clean up after insert
 vacuum analyze analysis_taxlots;
 
-analyze taxlots_no_orca;
+create temp table max_taxlots as
+	select distinct gid
+	from analysis_taxlots;
+
+drop index if exists max_tl_gid_ix cascade;
+create index max_tl_gid_ix on max_taxlots using BTREE (gid);
+
+
+create temp table nearest_stop as
+	select gid, (select max_zone, )
+	from taxlots_no_orca
 
 --Insert taxlots that are not within walking distance of max stops into analysis_taxlots 
 with ordered_stops as (
