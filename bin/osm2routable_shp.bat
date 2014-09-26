@@ -16,12 +16,35 @@ set pg_user=postgres
 ::the password for all psotgres commands in this session
 set /p pgpassword="Enter postgres password: "
 
-::Drop the osmosis_ped database if it exists, 'i' prompts the user to confirm that they want to
-::delete the database
-dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
+call:createPostgisDb
+call:runOsmosis
+call:buildPaths
+call:export2shp
 
-::Create database 'osmosis_ped' on the local instance of postgres using the postgis template
-createdb -O %pg_user% -T postgis_21_template -h %pg_host% -U %pg_user% %db_name%
+goto:eof
+
+
+::---------------------------------------
+:: ***Function section begins below***
+::---------------------------------------
+
+:createPostgisDb
+::Create a postgis and hstore enabled postgres database (first deleting it if it exixts)
+
+dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
+createdb -O %pg_user% -h %pg_host% -U %pg_user% %db_name%
+
+set q1="CREATE EXTENSION postgis;"
+psql -h %pg_host% -U %pg_user% -d %db_name% -c %q2%
+
+set q2="CREATE EXTENSION hstore;"
+psql -h %pg_host% -U %pg_user% -d %db_name% -c %q2%
+
+goto:eof
+
+
+:runOsmosis
+::Use osmosis to populate a postgis database with OpenStreetMap data
 
 ::Run the pg_simple_schema osmosis script on the new database to establish a schema that osmosis
 ::can import osm data into.  The file path below is in quotes to properly handled the spaces that
@@ -49,13 +72,24 @@ call osmosis ^
 	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 completeWays=yes ^
 	--write-pgsimp-0.6 host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
 
+goto:eof
+
+
+:buildPaths
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed
 ::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'.
 ::This script will also reproject the data to Oregon State Plane North (2913)
 set build_paths_script=%code_workspace%\postgis\compose_paths.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %build_paths_script%
 
+goto:eof
+
+
+:export2shp
 ::Export the street and trails table to a shapefile
+
 set shapefile_out=%data_workspace%\osm_foot.shp
-set table_name=streets_and_trails
-pgsql2shp -k -h %pg_host% -u %pg_user% -P %pgpassword% -f %shapefile_out% %db_name% %table_name%
+set table=streets_and_trails
+pgsql2shp -k -h %pg_host% -u %pg_user% -P %pgpassword% -f %shapefile_out% %db_name% %table%
+
+goto:eof
