@@ -18,7 +18,7 @@ set /p pgpassword="Enter postgres password: "
 
 call:createPostgisDb
 call:runOsmosis
-call:buildPaths
+call:buildStreetsPaths
 call:export2shp
 
 goto:eof
@@ -35,7 +35,7 @@ dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
 createdb -O %pg_user% -h %pg_host% -U %pg_user% %db_name%
 
 set q1="CREATE EXTENSION postgis;"
-psql -h %pg_host% -U %pg_user% -d %db_name% -c %q2%
+psql -h %pg_host% -U %pg_user% -d %db_name% -c %q1%
 
 set q2="CREATE EXTENSION hstore;"
 psql -h %pg_host% -U %pg_user% -d %db_name% -c %q2%
@@ -49,8 +49,8 @@ goto:eof
 ::Run the pg_simple_schema osmosis script on the new database to establish a schema that osmosis
 ::can import osm data into.  The file path below is in quotes to properly handled the spaces that
 ::are in the name
-set osmosis_schema_script="C:\Program Files (x86)\Osmosis\script\pgsimple_schema_0.6.sql"
-psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_schema_script%
+set osmosis_pgsnapshot="C:\Program Files (x86)\Osmosis\script\pgsnapshot_schema_0.6.sql"
+psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_pgsnapshot%
 
 ::Run osmosis on the OSM extract that is downloaded nightly using the Overpass API. The output will
 ::only include features that have one or more of the tags in the file keyvaluelistfile.txt. This file
@@ -70,12 +70,12 @@ call osmosis ^
 	--wkv keyValueListFile=%key_value_list% ^
 	--tt %tag_transform% ^
 	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 completeWays=yes ^
-	--write-pgsimp-0.6 host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
+	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
 
 goto:eof
 
 
-:buildPaths
+:buildStreetsPaths
 ::Run the 'compose_paths' sql script, this will build all streets and trails from the decomposed
 ::osmosis osm data, the output will be inserted into a new table called 'streets_and_trails'.
 ::This script will also reproject the data to Oregon State Plane North (2913)

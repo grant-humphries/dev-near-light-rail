@@ -21,7 +21,7 @@ set /p pgpassword="Enter postgres password:"
 ::Execute functions
 call:createPostgisDb
 call:loadShapefiles
-call:geoprocess_properties
+call:geoprocessProperties
 call:generateStats
 call:exportToCsv
 

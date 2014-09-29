@@ -70,3 +70,5 @@ create index taxlots_no_gix on taxlots_no_orca using GIST (geom);
 
 drop index if exists taxlots_no_gid_ix cascade;
 create index taxlots_no_gid_ix on taxlots_no_orca using BTREE (gid);
+
+vacuum analyze taxlots_no_orca;
