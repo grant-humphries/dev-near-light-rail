@@ -44,20 +44,18 @@ goto:eof
 
 
 :runOsmosis
-::Use osmosis to populate a postgis database with OpenStreetMap data
+::Use osmosis to populate a postgis database with openstreetmap data
 
-::Run the pg_simple_schema osmosis script on the new database to establish a schema that osmosis
+::Run the pgsnapshot_schema osmosis script on the new database to establish a schema that osmosis
 ::can import osm data into.  The file path below is in quotes to properly handled the spaces that
-::are in the name
+::are in the name.  This schema puts all osm tags into a single hstore column
 set osmosis_pgsnapshot="C:\Program Files (x86)\Osmosis\script\pgsnapshot_schema_0.6.sql"
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %osmosis_pgsnapshot%
 
 ::Run osmosis on the OSM extract that is downloaded nightly using the Overpass API. The output will
 ::only include features that have one or more of the tags in the file keyvaluelistfile.txt. This file
-::contains osm tags as key-value pair separated by a period with on per line.  Only tags that are
-::the tagtransform.xml file will be preserved on the features that are brought through.  Also be
-::sure to indicate the schema that osmosis is importing into, in this case it's the pg_simple_schema
-::that was created by the script run above
+::contains osm tags as key-value pairs separated by a period with one per line.  Only tags that are
+::in the tagtransform.xml file will be preserved on the features that are brought through.
 set osm_data=G:\PUBLIC\OpenStreetMap\data\osm\or-wa.osm
 set key_value_list=%code_workspace%\osmosis\keyvaluelistfile.txt
 set tag_transform=%code_workspace%\osmosis\tagtransform.xml

@@ -26,6 +26,7 @@ data_workspace = os.path.join(env.workspace, 'data', project_folder)
 # Assign project datasets to variables
 max_stops = os.path.join(data_workspace, 'max_stops.shp')
 max_zones = os.path.join(env.workspace, 'data', 'max_stop_zones.shp')
+final_isochrones = os.path.join(data_workspace, 'max_stop_isochrones.shp')
 
 # These variables will potentially be assigned values later by functions below
 service_area_layer = None
@@ -174,7 +175,6 @@ def createWalkGroups(zones, name, inverse=False):
 def createIsochroneFc():
 	"""Create a new feature class to store all isochrones created later in the work flow"""
 
-	final_isochrones = os.path.join(data_workspace, 'max_stop_isochrones.shp')
 	geom_type = 'POLYGON'
 	ore_state_plane_n = arcpy.SpatialReference(2913)
 	arcpy.management.CreateFeatureclass(os.path.dirname(final_isochrones), 
@@ -220,6 +220,9 @@ def createServiceArea():
 def generateIsochrones(locations, break_value):
 	"""Create walkshed polygons using the OpenStreetMap street and trail network from the input
 	locations to the distance of the input break value"""
+
+	if not service_area_layer:
+		createServiceArea()
 
 	# Set the break distance for this batch of stops
 	solver_props = arcpy.na.GetSolverProperties(service_area_layer)
@@ -287,14 +290,13 @@ def getIsoArea():
 addOrangeStops()
 addNameField()
 assignMaxZones()
-addInceptionYear
+addInceptionYear()
 
 # Prep for creation of walksheds
 createIsochroneFc()
-createServiceArea()
 
-# Walk distance is 2640 feet (0.5 miles), have experimented with using 2475',3300' and 4125', 
-# but higher ups seem firm with this number now
+# Create service area layer and walksheds, walk distance is 2640 feet (0.5 miles), have experimented
+# with using 2475', 3300' and 4125', but higher-ups seem firm with this number now
 walk_distance = 2640
 generateIsochrones(max_stops, walk_distance)
 
