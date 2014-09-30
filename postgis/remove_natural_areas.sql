@@ -40,6 +40,10 @@ create table orca_taxlots with oids as
 		where ST_Intersects(tl.geom, o.geom)) pre_o_taxlots
 	group by gid, action_type;
 
+--Create index to speed up coming matching 
+drop index if exists orca_tl_gid_ix cascade;
+create index orca_tl_gid_ix on orca_taxlots using BTREE (gid);
+
 drop table if exists taxlots_no_orca cascade;
 create table taxlots_no_orca (
 	gid int primary key references taxlots, 
@@ -52,24 +56,24 @@ create table taxlots_no_orca (
 	yearbuilt int
 );
 
---Now filter out any tax lots that are at least 80% covered by natural areasS
+vacuum analyze;
+
+--Now filter out any tax lots that are at least 80% covered by natural areas
 insert into taxlots_no_orca
 	select tl.gid, tl.geom, tlid, totalval, gis_acres, prop_code, landuse, yearbuilt
 	from taxlots tl
 		left join orca_taxlots ot
 		on tl.gid = ot.gid
 	--recall that if something is null it won't match any != statements
-	where (action_type is null
-			or ot.action_type != 'remove')
-		and (ot.geom is null
-			or (ST_Area(ot.geom) / ST_Area(tl.geom)) < 0.8);
+	where (ot.action_type != 'remove'
+			or action_type is null)
+		and (ST_Area(ot.geom) / ST_Area(tl.geom) < 0.8
+			or ot.geom is null);
 
---Create indices to speed the next steps on this analysis
+--Create indices to speed the next steps on this analysis, note that gid already
+--has a btree index on it thanks to the fact that it is a primary key
 drop index if exists taxlots_no_gix cascade;
 create index taxlots_no_gix on taxlots_no_orca using GIST (geom);
 
-drop index if exists taxlots_no_gid_ix cascade;
-create index taxlots_no_gid_ix on taxlots_no_orca using BTREE (gid);
-
 --Clean-up
-vacuum analyze taxlots_no_orca;
+vacuum analyze;
