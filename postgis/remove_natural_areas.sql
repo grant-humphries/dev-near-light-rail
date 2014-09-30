@@ -3,17 +3,17 @@
 --PostGreSQL Version: 9.3
 ---------------------------------
 
---This script creates tables that contains only properties that are less than
+--This script result in a table that contains only tax lots that are less than
 --80% covered by natural areas.  This method was developed to replace the technique
 --of erasing the geometry of the natural areas from the geometry of the tax lots
---because that left small fragements in some case where the datasets didn't align
+--as this left fragments in some case where the datasets didn't perfectly align
 
 --Much of the work here is derived from this post:
 --http://gis.stackexchange.com/questions/31310/acquiring-arcgis-like-speed-in-postgis
 
---Create a table that containings polygons that are the intersection of the
---taxlot and orca datasets, then union any geometry that are derived from 
---same taxlot
+--Create a table that containing polygons that are the intersection of the
+--tax lot and orca datasets, then union any geometries that are derived from 
+--same source taxlot
 drop table if exists orca_taxlots cascade;
 create table orca_taxlots with oids as
 	select gid, ST_Multi(ST_Union(geom)) as geom, action_type
@@ -33,10 +33,10 @@ create table orca_taxlots with oids as
 			from orca
 			--some orca types aren't considered natural areas for the purposes of
 			--this project, those are filtered out below, the excluded categories
-			--are school lands, home owners association lands and 'other'
+			--are 'school lands', 'home owners association lands' and 'other'
 			where unittype in ('Cemetery', 'Golf Course', 'Natural Area', 'Park')) o
-		--first filtering the data this way instead of running everything through
-		--st_intersection is a big time saver
+		--first filtering the data with st_intersects instead of running everything
+		--through st_intersection is significantly less expensive
 		where ST_Intersects(tl.geom, o.geom)) pre_o_taxlots
 	group by gid, action_type;
 
@@ -71,4 +71,5 @@ create index taxlots_no_gix on taxlots_no_orca using GIST (geom);
 drop index if exists taxlots_no_gid_ix cascade;
 create index taxlots_no_gid_ix on taxlots_no_orca using BTREE (gid);
 
+--Clean-up
 vacuum analyze taxlots_no_orca;

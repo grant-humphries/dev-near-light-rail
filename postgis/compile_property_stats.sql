@@ -10,12 +10,13 @@
 --Create versions of the taxlot- and multifam- analysis tables that remove the duplicates that exist
 --when properties are within walking distance of multiple stops that have different 'max zone'
 --associations, these will be used to remove double counting from regional totals
-drop table if exists unique_analysis_taxlots cascade;
-create table unique_analysis_taxlots (
+drop table if exists unique_a_taxlots cascade;
+create table unique_a_taxlots (
 	--using the from the original taxlots dataset and setting 
 	--them as the primary key ensures no duplicates
 	gid int primary key references taxlots,
 	geom geometry,
+	totalval numeric,
 	gis_acres numeric,
 	yearbuilt int,
 	max_year int,
@@ -27,15 +28,15 @@ create table unique_analysis_taxlots (
 	nine_cities boolean
 );
 
-insert into unique_analysis_taxlots
-	select gid, geom, totalval, gis_acres, yearbuilt, min(max_year) as max_year, 
-		null::text as max_zone, near_max, min(walk_dist) as walk_dist, tm_dist, ugb, nine_cities
+insert into unique_a_taxlots
+	select gid, geom, totalval, gis_acres, yearbuilt, min(max_year), 
+		null, near_max, min(walk_dist), tm_dist, ugb, nine_cities
 	from analysis_taxlots
 	group by gid, geom, totalval, gis_acres, yearbuilt, near_max, tm_dist, 
 		ugb, nine_cities;
 
-drop table if exists unique_analysis_multifam cascade;
-create table unique_analysis_multifam (
+drop table if exists unique_a_multifam cascade;
+create table unique_a_multifam (
 	gid int primary key references multifamily,
 	geom geometry,
 	units int,
@@ -48,9 +49,9 @@ create table unique_analysis_multifam (
 	nine_cities boolean
 );
 
-insert into unique_analysis_multifam
-	select gid, geom, units, yearbuilt, min(max_year) as max_year, null::text as max_zone, 
-		near_max, tm_dist, ugb, nine_cities
+insert into unique_a_multifam
+	select gid, geom, units, yearbuilt, min(max_year), 
+		null, near_max, tm_dist, ugb, nine_cities
 	from analysis_multifam
 	group by gid, geom, units, yearbuilt, near_max, tm_dist, ugb, nine_cities;
 
@@ -116,8 +117,8 @@ begin
 		zone_clause := 'AND max_zone = tx1.max_zone ';
 	elsif group_method = 'by_subset' then
 		grouping_field := subset;
-		taxlot_table := 'unique_analysis_taxlots ';
-		multifam_table := 'unique_analysis_multifam ';
+		taxlot_table := 'unique_a_taxlots ';
+		multifam_table := 'unique_a_multifam ';
 		zone_rank := '1';
 	else
 		raise notice 'invalid input for ''group_method'' parameter,';
@@ -206,7 +207,7 @@ create table pres_stats_minus_near_max with oids as
 		round(housing_units / gis_acres, 2) as normalized_units
 	from property_stats
 	where group_desc like '%not in MAX Walkshed%'
-		OR group_desc = 'Properties in MAX Walkshed'
+		or group_desc = 'Properties in MAX Walkshed'
 	order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
 --ran in 73,784 ms on 8/5/14
