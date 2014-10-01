@@ -75,7 +75,7 @@ insert into analysis_taxlots (gid, geom, tlid, totalval, gis_acres, prop_code,
 	select tno.gid, tno.geom, tno.tlid, tno.totalval, tno.gis_acres, tno.prop_code,
 		tno.landuse, tno.yearbuilt, tns.year_zone[1]::int, tns.year_zone[2], false
 	from taxlots_no_orca tno, tl_nearest_stop tns
-	where tno.gid = ns.gid
+	where tno.gid = tns.gid
 		and not exists (select null from max_taxlots where gid = tno.gid);
 
 --Temp table will turn the 9 most populous cities in the TM district into a single geometry

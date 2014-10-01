@@ -25,7 +25,7 @@ call:geoprocessProperties
 call:generateStats
 call:exportToCsv
 
-::This line must be inplace or function below will run w/o being called
+::This line must be in place or functions below will run w/o being called
 goto:eof
 
 
@@ -79,6 +79,10 @@ shp2pgsql -s %srid% -D -I %rlis_path%\TAXLOTS\taxlots.shp taxlots ^
 
 ::multi-family housing
 shp2pgsql -s %srid% -D -I %rlis_path%\LAND\multifamily_housing_inventory.shp multifamily ^
+	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+
+::outdoor recreation and conservations areas (orca)
+shp2pgsql -s %srid% -D -I %rlis_path%\LAND\orca.shp orca ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::trimet service district boundary

@@ -44,6 +44,12 @@ create table orca_taxlots with oids as
 drop index if exists orca_tl_gid_ix cascade;
 create index orca_tl_gid_ix on orca_taxlots using BTREE (gid);
 
+drop index if exists orca_tl_gix cascade;
+create index orca_tl_gix on orca_taxlots using GIST (geom);
+
+drop index if exists orca_tl_act_type_ix cascade;
+create index orca_tl_act_type_ix on orca_taxlots using BTREE (action_type);
+
 drop table if exists taxlots_no_orca cascade;
 create table taxlots_no_orca (
 	gid int primary key references taxlots, 
