@@ -1,3 +1,9 @@
+--Grant Humphries for TriMet, 2014
+--PostGIS Version: 2.1
+--PostGreSQL Version: 9.3
+---------------------------------
+
+--create table to hold street and trail network
 drop table if exists streets_and_trails cascade;
 create table streets_and_trails (
 	way_id bigint primary key references ways,
