@@ -11,7 +11,7 @@ from arcpy import env
 
 # Configure environment settings
 env.overwriteOutput = True
-env.addOutputsToMap = True
+env.addOutputsToMap = False
 env.workspace = os.path.abspath(sys.argv[1])
 #env.outputCoordinateSystem = arcpy.SpatialReference(2913)
 
@@ -43,10 +43,13 @@ def csv2shp():
 	spatial_reference = arcpy.SpatialReference(2913)
 	arcpy.management.MakeXYEventLayer(cleaned_stops_csv, x_field, y_field, stops_layer, spatial_reference)
 
-	# Save the feature layer to a feature class that is stored on the disk
-	stops_fc = os.path.join(env.workspace, 'max_stops.shp')
-	arcpy.conversion.FeatureClassToFeatureClass(stops_layer, 
-		os.path.dirname(stops_fc), os.path.basename(stops_fc))
+	# Save the feature layer to a feature class that is stored on the disk, but first
+	# delete the shapefile if it already exists as the fc2shp tool won't overwrite
+	stops_shp = os.path.join(env.workspace, stops_layer + '.shp')
+	if arcpy.Exists(stops_shp):
+		arcpy.management.Delete(stops_shp)
+
+	arcpy.conversion.FeatureClassToShapefile(stops_layer, os.path.dirname(stops_shp))
 
 removeWhiteSpace()
 csv2shp()

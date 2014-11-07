@@ -1,23 +1,41 @@
-set term off
-set feedback off
-set colsep ','
-set underline off
-set trimspool on
-set linesize 9999
-set pagesize 9999
-set newpage none
+--Grant Humphries for TriMet, 20114
+--Oracle version: 11.2.0.3
+--sqlplus version: 11.2.0.1
+----------------------------------
 
-spool &1
+--don't write query results to console
+set termout off;
+--don't write query stats to console
+set feedback off;
+--separate columns with commas
+set colsep ',';
+--don't unserline the header
+set underline off;
+--trim trailing spaces at the end of a column
+set trimspool on;
+--width of a page of query results
+set linesize 9999;
+--height of page of query results
+set pagesize 9999;
+--number of blank lines at the beginning of page
+set newpage none;
 
+--spool writes the results of queries to the file passed to it
+spool &1;
+
+--select all permanent max stops using the landmark table, also include each the
+--lines that serve each stop as an attribute 
 select loc.location_id as stop_id, 
 	loc.public_location_description as stop_name,
 	':' || listagg(r.route_number, ':; :') within group (order by r.route_number)|| ':' as routes,
 	listagg(r.route_description, '; ') within group (order by r.route_description) as route_desc,
-	min(rs.route_stop_begin_date) as begin_date,
+	--white space is concatenated to the end of begin date so that the column heading is
+	--not truncated, in slqplus the heading can only be as long as the longest value
+	min(rs.route_stop_begin_date) || ' ' as begin_date,
 	max(rs.route_stop_end_date) as end_date,
 	loc.x_coordinate as x_coord, 
 	loc.y_coordinate as y_coord
-from route_def r, route_stop_def rs, location loc
+from trans.route_def r, trans.route_stop_def rs, trans.location loc
 where loc.location_id = rs.location_id
 	and rs.route_number = r.route_number
 	and rs.route_begin_date = r.route_begin_date
