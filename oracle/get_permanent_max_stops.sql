@@ -1,15 +1,18 @@
-set term off
-set colsep ,
-set pagesize 0
+--set term off
+--set feedback off
+set colsep ','
+set underline off
 set trimspool on
-set linesize 1000
+set linesize 9999
+set pagesize 9999
+set newpage none
 
-spool C:\Users\humphrig\Desktop\temp\test.csv
+spool &1
 
 select loc.location_id as stop_id, 
 	loc.public_location_description as stop_name,
-	':' || listagg(r.route_number, ': | :') within group (order by r.route_number)|| ':' as routes,
-	listagg(r.route_description, ' | ') within group (order by r.route_description) as route_desc,
+	':' || listagg(r.route_number, ':;:') within group (order by r.route_number)|| ':' as routes,
+	listagg(r.route_description, ';') within group (order by r.route_description) as route_desc,
 	min(rs.route_stop_begin_date) as begin_date,
 	max(rs.route_stop_end_date) as end_date,
 	loc.x_coordinate as x_coord, 
@@ -37,5 +40,5 @@ where loc.location_id = rs.location_id
 group by loc.location_id, loc.public_location_description,
 	loc.x_coordinate, loc.y_coordinate;
 
-spool off
+spool off;
 exit;
