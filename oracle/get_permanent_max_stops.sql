@@ -1,5 +1,5 @@
---set term off
---set feedback off
+set term off
+set feedback off
 set colsep ','
 set underline off
 set trimspool on
@@ -11,8 +11,8 @@ spool &1
 
 select loc.location_id as stop_id, 
 	loc.public_location_description as stop_name,
-	':' || listagg(r.route_number, ':;:') within group (order by r.route_number)|| ':' as routes,
-	listagg(r.route_description, ';') within group (order by r.route_description) as route_desc,
+	':' || listagg(r.route_number, ':; :') within group (order by r.route_number)|| ':' as routes,
+	listagg(r.route_description, '; ') within group (order by r.route_description) as route_desc,
 	min(rs.route_stop_begin_date) as begin_date,
 	max(rs.route_stop_end_date) as end_date,
 	loc.x_coordinate as x_coord, 

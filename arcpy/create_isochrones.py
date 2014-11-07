@@ -37,33 +37,6 @@ sa_isochrones = None
 if not os.path.exists(os.path.join(data_workspace, 'temp')):
 	os.makedirs(os.path.join(data_workspace, folder))
 
-def addOrangeStops():
-	"""Insert orange line stops, which are in the spatial dbs at this time, into the shapefile 
-	containing all of the other MAX stops.  This function can be removed once the orange line stops
-	are added stops tables on maps10"""
-
-	orange_stops = os.path.join(env.workspace, 'data', 'projected_orange_line_stops.shp')
-
-	# Check to see if the orange stops have already been added...
-	orange_added = False
-	fields = ['OID@', 'routes']
-	with arcpy.da.SearchCursor(max_stops, fields) as cursor:
-		for oid, routes in cursor:
-			if routes == ':MAX Orange Line:':
-				orange_added = True
-				break
-
-	# If they haven't add them
-	if not orange_added:
-		fields = ['Shape@', 'stop_id', 'stop_name', 'routes', 'begin_date', 'end_date']
-		i_cursor = arcpy.da.InsertCursor(max_stops, fields)
-
-		with arcpy.da.SearchCursor(orange_stops, fields) as cursor:
-			for geom, stop_id, name, routes, b_date, e_date in cursor:
-				i_cursor.insertRow((geom, stop_id, name, routes, b_date, e_date))
-
-		del i_cursor
-
 def addNameField():
 	"""Only a field called 'name' will be retained when locations are loaded into a service area 
 	analysis, as the MAX stops will be.  This field is populated that field with unique identifiers
@@ -126,17 +99,17 @@ def addInceptionYear():
 	fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
 	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
 		for stop_id, routes, zone, year in cursor:
-			if ':MAX Blue Line:' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
+			if 'MAX Blue Line' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
 				year = 1980
-			elif ':MAX Blue Line:' in routes and zone in ('West Suburbs', 'Southwest Portland'):
+			elif 'MAX Blue Line' in routes and zone in ('West Suburbs', 'Southwest Portland'):
 				year = 1990
-			elif ':MAX Red Line:' in routes:
+			elif 'MAX Red Line' in routes:
 				year = 1997
-			elif ':MAX Yellow Line:' in routes:
+			elif 'MAX Yellow Line' in routes:
 				year = 1999
-			elif ':MAX Green Line:' in routes:
+			elif 'MAX Green Line' in routes:
 				year = 2003
-			elif ':MAX Orange Line:' in routes:
+			elif 'MAX Orange Line' in routes:
 				year = 2008
 			else:
 				print 'Stop ' + str(stop_id) + ' not assigned a MAX Year'

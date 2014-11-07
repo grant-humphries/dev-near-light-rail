@@ -18,10 +18,10 @@ if not exist %data_workspace% mkdir %data_workspace%
 ::Set postgres parameters
 set oracle_db=HAWAII
 set oracle_user=tmpublic
-set p/ oracle_pass="Enter password for db:HAWAII, user:tmpublic"
+set /p oracle_pass="Enter password for db:HAWAII, user:tmpublic: "
 
 ::Execute functions
-call:getCurrentMaxStops
+call:getPermanentMaxStops
 call:stopsCsv2shp
 
 goto:eof
@@ -36,6 +36,7 @@ goto:eof
 
 ::Run a sql script using sqlplus
 set stops_script=%code_workspace%\oracle\get_permanent_max_stops.sql
+echo sqlplus %oracle_user%/%oracle_pass%@%oracle_db% @%stops_script% %stops_csv%
 sqlplus %oracle_user%/%oracle_pass%@%oracle_db% @%stops_script% %stops_csv%
 
 goto:eof
