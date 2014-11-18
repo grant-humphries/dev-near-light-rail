@@ -3,7 +3,7 @@ setlocal EnableDelayedExpansion
 
 ::Set project workspaces
 set workspace=G:\PUBLIC\GIS_Projects\Development_Around_Lightrail
-set postgis_workspace=%workspace%\github\dev-near-lightrail\postgis
+set git_workspace=%workspace%\github\dev-near-lightrail
 
 set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
 set data_workspace=%workspace%\data\%data_folder%
@@ -17,10 +17,10 @@ set pg_user=postgres
 ::set the password for most postgres commands in the current session
 set /p pgpassword="Enter postgres password:"
 
-
 ::Execute functions
 call:createPostgisDb
 call:loadShapefiles
+call:addYearbuiltValues
 call:geoprocessProperties
 call:generateStats
 call:exportToCsv
@@ -66,36 +66,74 @@ set srid=2913
 ::The 'q' parameter on psql makes command line output less verbose
 
 ::max stops 
-shp2pgsql -s %srid% -D -I %data_workspace%\max_stops.shp max_stops ^
+shp2pgsql -d -s %srid% -D -I %data_workspace%\max_stops.shp max_stops ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::walkshed polygons (isochrones)
-shp2pgsql -s %srid% -D -I %data_workspace%\max_stop_isochrones.shp isochrones ^
+shp2pgsql -d -s %srid% -D -I %data_workspace%\max_stop_isochrones.shp isochrones ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::taxlots
-shp2pgsql -s %srid% -D -I %rlis_path%\TAXLOTS\taxlots.shp taxlots ^
+shp2pgsql -d -s %srid% -D -I %rlis_path%\TAXLOTS\taxlots.shp taxlots ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::multi-family housing
-shp2pgsql -s %srid% -D -I %rlis_path%\LAND\multifamily_housing_inventory.shp multifamily ^
+shp2pgsql -d -s %srid% -D -I %rlis_path%\LAND\multifamily_housing_inventory.shp multifamily ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::outdoor recreation and conservations areas (orca)
-shp2pgsql -s %srid% -D -I %rlis_path%\LAND\orca.shp orca ^
+shp2pgsql -d -s %srid% -D -I %rlis_path%\LAND\orca.shp orca ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::trimet service district boundary
-shp2pgsql -s %srid% -D -I %trimet_path%\tm_fill.shp tm_district ^
+shp2pgsql -d -s %srid% -D -I %trimet_path%\tm_fill.shp tm_district ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::city boundaries
-shp2pgsql -s %srid% -D -I %rlis_path%\BOUNDARY\cty_fill.shp city ^
+shp2pgsql -d -s %srid% -D -I %rlis_path%\BOUNDARY\cty_fill.shp city ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
 
 ::urban growth boundary
-shp2pgsql -s %srid% -D -I %rlis_path%\BOUNDARY\ugb.shp ugb ^
+shp2pgsql -d -s %srid% -D -I %rlis_path%\BOUNDARY\ugb.shp ugb ^
 	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+
+goto:eof
+
+
+:addYearbuiltValues
+::Some additional year built data was provided by washington county for tax lots that
+::have no data for that attribute in RLIS, this function adds that data to the rlis
+::taxlots that are used for this analysis
+
+set id_column=ms_imp_seg
+set year_column=yr_built
+set year_table=wash_co_missing_years
+set r2t_table=rno2tlid
+
+set year_csv=%git_workspace%\taxlot_data\wash_co_missing_years.csv
+set r2t_dbf=%git_workspace%\taxlot_data\wash_missing_years_rno2tlid.dbf
+
+::Drop table that holds washington county missing yearbuilt values if it exists
+set drop_command="DROP TABLE IF EXISTS %year_table% CASCADE;"
+psql -h %pg_host% -d %db_name% -U %pg_user% -c %drop_command%
+
+::Create table to hold washington county missing year built data
+set create_command="CREATE TABLE %year_table% (%id_column% text, %year_column% int) WITH OIDS;"
+psql -h %pg_host% -d %db_name% -U %pg_user% -c %create_command%
+
+::Populate washington county missing yearbuilt table with data from csv
+echo \copy %year_table% from %year_csv% csv header ^
+	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+
+::Load the dbf that has a mapping of account numbers (rno) to tax lot id's (tlid) 
+shp2pgsql -d -n -D %r2t_dbf% %r2t_table% ^
+	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+
+::Add the missing years to the rlis taxlot data when the year is greater than what is in
+::rlis (entries will have a value of 0 when there is no data)
+set add_years_script=%git_workspace%\postgis\add_missing_yearbuilt.sql
+psql -h %pg_host% -d %db_name% -U %pg_user% -v yr_tbl=%year_table% -v r2t_tbl=%r2t_table% ^
+	-v id_col=%id_column% -v yr_col=%year_column% -f %add_years_script%
 
 goto:eof
 
@@ -106,13 +144,13 @@ echo "Running geoprocessing sql scripts"
 echo "Start time is: %time:~0,8%"
 
 ::Filter out properties that are parks, natural areas, cemeteries & golf courses
-set filter_script=%postgis_workspace%\remove_natural_areas.sql
+set filter_script=%git_workspace%\postgis\remove_natural_areas.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %filter_script%
 
 echo.phase 1 complete... 
 
 ::Add project attributes to properties based on spatial relationships
-set geoprocess_script=%postgis_workspace%\geoprocess_properties.sql
+set geoprocess_script=%git_workspace%\postgis\geoprocess_properties.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %geoprocess_script%
 
 goto:eof
@@ -122,7 +160,7 @@ goto:eof
 ::Execute sql script that compiles project stats and generates final export tables
 echo "Compiling final stats..."
 
-set stats_script=%postgis_workspace%\compile_property_stats.sql
+set stats_script=%git_workspace%\postgis\compile_property_stats.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %stats_script%
 
 goto:eof
