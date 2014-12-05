@@ -22,7 +22,7 @@ This script grabs current OSM data, imports it into PostGIS using Osmosis, rebui
 
 ## Create Network Dataset with ArcGIS's Network Analyst
 
-As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have one btach file or shell script that runs this entire process and this is one of my only remaining hurdles
+As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have a single shell script that runs this entire process and this is one of my only remaining hurdles
 
 1. In ArcMap right click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 2. In the next screen use the default name for the file
