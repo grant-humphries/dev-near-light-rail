@@ -24,8 +24,8 @@ This script grabs current OSM data, imports it into PostGIS using Osmosis, rebui
 
 As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have a single shell script that runs this entire process and this is one of my only remaining hurdles
 
-1. In ArcMap right click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
-2. In the next screen use the default name for the file
+1. In ArcMap right-click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+2. On the next screen use the default name for the file
 3. Keep default of modeling turns
 4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
 5. Leave Z-input as 'None'
@@ -40,11 +40,10 @@ Once the Network Dataset has finished building (which takes a few minutes), plan
 
 This step creates walkshed polygons (a.k.a. isochrones) that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
 
-1. Within `arcpy/create_isochrones.py` change the project workspace (variable: 'env.workspace') to the folder that was created for the current iteration.  This should be a subfolder within `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` that reflects the current month and year in the format 'YYYY_MM'.  This step is critical because **older data will be overwritten and the wrong inputs will be used** if it is not carried out.  Within the python script named above there is a placeholder that will throw an error if not corrected, this is to ensure this change is made before the script is run.
-2. Check to see if the Orange Line stops have been added to the MAX stop data from the database on maps10.trimet.org.  If they have remove the block of code that was adds them to the existing stops.
-3. Adjust walk distance thresholds if necessary.
-4. Run `create_isochrones.py` in the python window in ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former method (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution).  This is not ideal because when using the command prompt you can prompt users to give input (such as the name of the project folder), so I hope to be able to be able to find a way to switch to this method.  The script executed in a little under 10 minutes as of 02/2014.
-5. Once the isochrones shapefile has been created bring it into ArcMap or QGIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network and determine if any changes need to be made to geometry or attributes.
+1. Within `arcpy/create_isochrones.py` change the the variable 'project_folder' to the name of the folder that was created for the current iteration.  This should be a subfolder within `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` that reflects the current month and year in the format 'YYYY_MM'.  This step is critical because **older data will be overwritten and the wrong inputs will be used** if it is not carried out.  Within the python script named above there is a placeholder that will throw an error if not corrected, this is to ensure this change is made before the script is run.
+2. Adjust walk distance thresholds if necessary.
+3. Run `create_isochrones.py` in the python window within ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former method (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution).  This is not ideal because when using the command prompt you can prompt users to give input (such as the name of the project folder), so I hope to be able to be able to find a way move away from the present method.  The script executed in a little under 10 minutes as of 02/2014.
+4. Once the isochrones shapefile has been created bring it into a desktop GIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network to check for errors there.
 
 ## Geoprocess Property Data and Generate Final Stats
 
