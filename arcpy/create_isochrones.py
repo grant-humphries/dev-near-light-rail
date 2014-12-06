@@ -96,27 +96,27 @@ def addInceptionYear():
 
 	# Note that 'MAX Year' for stops within the CBD are varaible as stops within that region were not
 	# all built at the same time (this is not the case for all other MAX zones)
-	fields = ['stop_id', 'routes', 'max_zone', 'incpt_year']
+	fields = ['stop_id', 'route_desc', 'max_zone', 'incpt_year']
 	with arcpy.da.UpdateCursor(max_stops, fields) as cursor:
-		for stop_id, routes, zone, year in cursor:
-			if 'MAX Blue Line' in routes and zone not in ('West Suburbs', 'Southwest Portland'):
+		for stop_id, rte_desc, zone, year in cursor:
+			if 'MAX Blue Line' in rte_desc and zone not in ('West Suburbs', 'Southwest Portland'):
 				year = 1980
-			elif 'MAX Blue Line' in routes and zone in ('West Suburbs', 'Southwest Portland'):
+			elif 'MAX Blue Line' in rte_desc:
 				year = 1990
-			elif 'MAX Red Line' in routes:
+			elif 'MAX Red Line' in rte_desc:
 				year = 1997
-			elif 'MAX Yellow Line' in routes:
+			elif 'MAX Yellow Line' in rte_desc and zone not in ('Central Business District'):
 				year = 1999
-			elif 'MAX Green Line' in routes:
+			elif 'MAX Green Line' in rte_desc:
 				year = 2003
-			elif 'MAX Orange Line' in routes:
+			elif 'MAX Orange Line' in rte_desc:
 				year = 2008
 			else:
 				print 'Stop ' + str(stop_id) + ' not assigned a MAX Year'
 				print 'Cannot proceed with out this assignment, examine code, data for errors'
 				sys.exit()
 
-			cursor.updateRow((stop_id, routes, zone, year))
+			cursor.updateRow((stop_id, rte_desc, zone, year))
 
 # This function is not being used at this time as the same walk distance is being used for each stop
 def createWalkGroups(zones, name, inverse=False):
