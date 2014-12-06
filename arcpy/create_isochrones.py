@@ -20,7 +20,7 @@ env.addOutputsToMap = True
 # Set workspace, the user will be prompted to enter the name of the subfolder that data is to be
 # written to for the current iteration
 project_folder = raw_input('Enter the name of the subfolder being used for this iteration of the project (should be in the form "YYYY_MM"): ')
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/'
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/'
 data_workspace = os.path.join(env.workspace, 'data', project_folder)
 
 # Assign project datasets to variables
@@ -35,7 +35,7 @@ sa_isochrones = None
 
 # Create a 'temp' folder to hold intermediate datasets
 if not os.path.exists(os.path.join(data_workspace, 'temp')):
-	os.makedirs(os.path.join(data_workspace, folder))
+	os.makedirs(os.path.join(data_workspace, 'temp'))
 
 def addNameField():
 	"""Only a field called 'name' will be retained when locations are loaded into a service area 
@@ -260,7 +260,6 @@ def getIsoArea():
 			cursor.updateRow((area_value, area_field))
 
 # Prep stop data
-addOrangeStops()
 addNameField()
 assignMaxZones()
 addInceptionYear()
