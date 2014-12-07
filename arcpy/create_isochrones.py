@@ -20,7 +20,7 @@ env.addOutputsToMap = True
 # Set workspace, the user will be prompted to enter the name of the subfolder that data is to be
 # written to for the current iteration
 project_folder = raw_input('Enter the name of the subfolder being used for this iteration of the project (should be in the form "YYYY_MM"): ')
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail/'
+env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
 data_workspace = os.path.join(env.workspace, 'data', project_folder)
 
 # Assign project datasets to variables
