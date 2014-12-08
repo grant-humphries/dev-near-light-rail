@@ -38,7 +38,7 @@ goto:eof
 
 :createPostgisDb
 ::Drop the database if it exists then (re)create it and enable postgis
-echo "Creating database..."
+echo "1) Creating database..."
 
 dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
 createdb -O %pg_user% -h %pg_host% -U %pg_user% %db_name%
@@ -52,7 +52,7 @@ goto:eof
 :loadShapefiles
 ::Load all shapefiles that will be used in the postgis analysis portion of the project
 ::using shp2pgsql
-echo "Loading shapefiles into Postgres..."
+echo "2) Loading shapefiles into Postgres..."
 echo "Start time is: %time:~0,8%"
 
 ::Set function variables
@@ -104,7 +104,8 @@ goto:eof
 ::Some additional year built data was provided by washington county for tax lots that
 ::have no data for that attribute in RLIS, this function adds that data to the rlis
 ::taxlots that are used for this analysis
-echo "Adding yearbuilt values, where missing, from supplementary data from Washington County"
+echo "3) Adding yearbuilt values, where missing, "
+echo "from supplementary data from Washington County"
 
 set id_column=ms_imp_seg
 set year_column=yr_built
@@ -141,7 +142,7 @@ goto:eof
 
 :geoprocessProperties
 ::Run sql scripts that 
-echo "Running geoprocessing sql scripts"
+echo "4) Running geoprocessing sql scripts"
 echo "Start time is: %time:~0,8%"
 
 ::Filter out properties that are parks, natural areas, cemeteries & golf courses
@@ -159,7 +160,7 @@ goto:eof
 
 :generateStats
 ::Execute sql script that compiles project stats and generates final export tables
-echo "Compiling final stats..."
+echo "5) Compiling final stats..."
 
 set stats_script=%git_workspace%\postgis\compile_property_stats.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %stats_script%
@@ -169,7 +170,7 @@ goto:eof
 
 :exportToCsv
 ::Write final output tables to csv
-echo "Exporting stats to csv..."
+echo "6) Exporting stats to csv..."
 
 ::Create a folder to store the output
 set csv_workspace=%data_workspace%\csv
