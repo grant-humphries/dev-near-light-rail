@@ -104,6 +104,7 @@ goto:eof
 ::Some additional year built data was provided by washington county for tax lots that
 ::have no data for that attribute in RLIS, this function adds that data to the rlis
 ::taxlots that are used for this analysis
+echo "Adding yearbuilt values, where missing, from supplementary data from Washington County"
 
 set id_column=ms_imp_seg
 set year_column=yr_built
