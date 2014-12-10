@@ -149,7 +149,7 @@ echo "Start time is: %time:~0,8%"
 set filter_script=%git_workspace%\postgis\remove_natural_areas.sql
 psql -h %pg_host% -d %db_name% -U %pg_user% -f %filter_script%
 
-echo.phase 1 complete... 
+echo "phase 4.1 complete, onto 4.2..."
 
 ::Add project attributes to properties based on spatial relationships
 set geoprocess_script=%git_workspace%\postgis\geoprocess_properties.sql

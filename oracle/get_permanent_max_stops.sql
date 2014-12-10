@@ -64,3 +64,5 @@ group by loc.location_id, loc.public_location_description,
 
 spool off;
 exit;
+
+--As of 12/2014 there are 166 permanent MAX stops
