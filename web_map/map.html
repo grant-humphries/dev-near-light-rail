@@ -1,14 +1,48 @@
 <!doctype html>
-<html lang="en">
+<html lang='en'>
   <head>
-    <link rel="stylesheet" href="http://openlayers.org/en/v3.2.1/css/ol.css" type="text/css">
-    <link rel="stylesheet" href="map.css" type="text/css">
-    <script src="http://openlayers.org/en/v3.2.1/build/ol.js" type="text/javascript"></script>
-    <title>OpenLayers 3 example</title>
+    <link rel='stylesheet' href='map.css' type='text/css'>
+    <link rel='stylesheet' href='http://openlayers.org/en/v3.3.0/css/ol.css' type='text/css'>
+    <script src='http://openlayers.org/en/v3.3.0/build/ol.js' type='text/javascript'></script>
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
+    <title>dev-near-light-rail-map</title>
   </head>
   <body>
-    <h2>My Map</h2>
-    <div id="map" class="map"></div>
-    <script src="map.js" type="text/javascript"></script>
+    <div id='map' class='map'>
+      <div class='cntrl-wrapper' id='lb-wrapper'>
+        <button class='legend-btn'>L</button>
+      </div>
+      <div class='cntrl-wrapper' id='legend-wrapper'>
+        <div class='legend'>
+          <div class='legend-title'>Tax Lot Classifications</div>
+          <div class='legend-scale'>
+            <ul class='legend-labels'>
+              <li>
+                <span style='background:red' class='legend-patch'></span>
+                <span class='patch-text'>red</span>
+              </li>
+              <li>
+                <span style='background:orange' class='legend-patch'></span>
+                <span class='patch-text'>orange</span>
+              </li>
+              <li>
+                <span style='background:blue' class='legend-patch'></span>
+                <span class='patch-text'>blue</span>
+              </li>
+              <li>
+                <span style='background:lightblue' class='legend-patch'></span>
+                <span class='patch-text'>light blue</span>
+              </li>
+              <li>
+                <span style='background:green' class='legend-patch'></span>
+                <span class='patch-text'>green</span>
+              </li>
+            </ul>
+          </div>
+          <div class='legend-source'>Source: <a href='#link to source'>Name of source</a></div>
+        </div>
+      </div>
+    </div>
+    <script src='map.js' type='text/javascript'></script>
   </body>
 </html>

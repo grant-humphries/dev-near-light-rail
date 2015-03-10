@@ -1,0 +1,23 @@
+* {
+	fill: red;
+}
+
+[near_max=True] {
+	fill: orangered;
+}
+
+[near_max=True] [yearbuilt<max_year] {
+	fill: orange;
+}
+
+[near_max=False] {
+	fill: #1e69ff;
+}
+
+[near_max=False] [yearbuilt<max_year] {
+	fill: #00aeff;
+}
+
+[park=True] {
+	fill: #69ff1e;
+}
