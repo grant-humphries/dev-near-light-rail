@@ -1,23 +1,49 @@
-* {
-	fill: red;
-}
-
 [near_max=True] {
-	fill: orangered;
+	fill: #dfc27d;
 }
-
-[near_max=True] [yearbuilt<max_year] {
-	fill: orange;
+/* #875943*/
+[near_max=True] [yearbuilt>=max_year] {
+	fill: #8c510a;
 }
 
 [near_max=False] {
-	fill: #1e69ff;
+	fill: #80cdc1;
 }
 
-[near_max=False] [yearbuilt<max_year] {
-	fill: #00aeff;
+[near_max=False] [yearbuilt>=max_year] {
+	fill: #01665e;
 }
 
 [park=True] {
-	fill: #69ff1e;
+	fill: #9ef29e;
+}
+
+[tm_dist=False] {
+	fill-opacity: 0.5;
+	stroke-opacity: 0.5;
+}
+
+[@scale < 20000] {
+	stroke-width: 3px, 1px;
+	z-index: 0, 1;
+}
+
+[@scale < 20000] [near_max=True] {
+	stroke: white, #dfc27d;
+}
+
+[@scale < 20000] [near_max=True] [yearbuilt>=max_year] {
+	stroke: white, #8c510a;
+}
+
+[@scale < 20000] [near_max=False] {
+	stroke: white, #80cdc1;
+}
+
+[@scale < 20000] [near_max=False] [yearbuilt>=max_year] {
+	stroke: white, #01665e;
+}
+
+[@scale < 20000] [park=True] {
+	stroke: white, #9ef29e;
 }

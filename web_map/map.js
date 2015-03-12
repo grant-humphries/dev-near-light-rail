@@ -83,9 +83,13 @@ $(document).ready(function(){
 	});
 });
 
-/*$(document).ready(function(){
+$(document).ready(function(){
 	$('#legend-wrapper').hide();
-});*/
+});
+
+$(document).ready(function(){
+	$('#lp-wrapper').hide();
+});
 
 $(document).ready(function(){
 	$('.legend').hover(function(){
@@ -95,3 +99,19 @@ $(document).ready(function(){
 		$(this).css('background-color', 'rgba(255, 255, 255, 0.5)');
 	});
 });
+
+$(document).ready(function(){
+	$('.lyr-cntrl-btn').hover(function(){
+		$(this).css('background-color', 'rgba(255, 255, 255, 0.75)');
+	},
+	function(){
+		$(this).css('background-color', 'rgba(255, 255, 255, 0.6)');
+	});
+});
+
+/*//http://openlayers.org/en/master/examples/layer-group.js
+function bindInputs(layerid, layer) {
+  new ol.dom.Input($(layerid + ' .visible')[0])
+      .bindTo('checked', layer, 'visible');
+  );
+}*/

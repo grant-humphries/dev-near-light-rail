@@ -1,5 +1,13 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
 .map {
-	height: 750px;
+	height: 98%;
 	width: 100%;
 }
 
@@ -8,12 +16,12 @@
 	background-color: rgba(255, 255, 255, 0.4);
     border-radius: 4px;
     padding: 2px;
+    z-index: 1;
 }
 
 #lb-wrapper {
     left: 16px;
     top: 80px;
-    z-index: 1;
 }
 
 .legend-btn {
@@ -31,13 +39,11 @@
     text-align: center;
     text-decoration: none;
     width: 1.375em;
-    z-index: 2;
 }
 
 #legend-wrapper {
 	top: 80px;
 	left: 60px;
-	z-index: 1;
 	padding: 4px;
 }
 
@@ -87,7 +93,7 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
     margin-left: 5px;
     opacity: 0.75;
     border-radius: 2px;
-/*    border: 1px solid #999;*/
+    opacity: 0.5;
 }
 
 .patch-text {
@@ -101,5 +107,28 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
     font-size: 70%;
     color: #999;
     clear: both;
+    font-family: Calibri, Tahoma, Geneva, sans-serif;
 }
 
+.lyr-cntrl-btn {
+/*	float: right;*/
+	width: 38px;
+	height: 38px;
+	background-image: url('ol3_logo.png');
+	background-repeat: no-repeat;
+	background-position: 2px;
+	background-color: rgba(255, 255, 255, 0.6);
+	border: none;
+	border-radius: 2px;
+}
+
+#lc-btn-wrapper {
+	right: 16px;
+	top: 16px;
+	padding: 3px;
+}
+
+#lp-wrapper {
+	right: 75px;
+	top: 16px;
+}
