@@ -60,8 +60,20 @@ var map = new ol.Map({
 });
 
 $(document).ready(function(){
+	$('#legend-wrapper').hide();
+});
+
+$(document).ready(function(){
 	$('.legend-btn').click(function(){
-		$('#legend-wrapper').toggle();
+		$('#legend-wrapper').show();
+		$('#lb-wrapper').hide();
+	});
+});
+
+$(document).ready(function(){
+	$('.legend').click(function(){
+		$('#legend-wrapper').hide();
+		$('#lb-wrapper').show();
 	});
 });
 
@@ -81,10 +93,6 @@ $(document).ready(function(){
 	function(){
 		$(this).css('background-color', 'rgba(0, 60, 136, 0.5)');
 	});
-});
-
-$(document).ready(function(){
-	$('#legend-wrapper').hide();
 });
 
 $(document).ready(function(){

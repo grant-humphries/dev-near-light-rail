@@ -43,7 +43,7 @@ body {
 
 #legend-wrapper {
 	top: 80px;
-	left: 60px;
+	left: 16px; /*prev 60*/
 	padding: 4px;
 }
 
