@@ -1,10 +1,10 @@
-// Map settings
+// Define map settings
 var map_center = ol.proj.transform(
 	[-122.68163, 45.52129], 'EPSG:4326', 'EPSG:3857'
 );
 
 
-// Data attributions
+// Establish data attribution
 var tm_attribution = new ol.Attribution({
 	html: 'tiles &copy; <a target="#" href="http://trimet.org/">TriMet</a>; map data'});
 var metro_attribution = new ol.Attribution({
@@ -17,43 +17,55 @@ var attributions = [
 ];
 
 
-// Map layers
+// Initialize map layers
 var domain = 'http://maps7.trimet.org'
 
-var tm_aerial = new ol.layer.Tile({
-	source: new ol.source.XYZ({
-		attributions: attributions,
-		url: domain + '/tilecache/tilecache.py/1.0.0/hybridOSM/{z}/{x}/{y}'
-	})
+base_maps = new ol.layer.Group({
+	'title': 'Base Maps',
+	layers: [
+		new ol.layer.Tile({
+			title: 'TriMet OSM Streets',
+			type: 'base',
+			visible: false,
+			source: new ol.source.XYZ({
+				attributions: attributions,
+				url: domain + '/tilecache/tilecache.py/1.0.0/currentOSM/{z}/{x}/{y}'
+			})
+		}),
+		new ol.layer.Tile({
+			title: 'TriMet Hybrid',
+			type: 'base',
+			visible: true,
+			source: new ol.source.XYZ({
+				attributions: attributions,
+				url: domain + '/tilecache/tilecache.py/1.0.0/hybridOSM/{z}/{x}/{y}'
+			})
+		})
+	]
 });
 
-var tm_carto = new ol.layer.Tile({
-	source: new ol.source.XYZ({
-		attributions: attributions,
-		url: domain + '/tilecache/tilecache.py/1.0.0/currentOSM/{z}/{x}/{y}'
-	})
+overlays = new ol.layer.Group({
+	'title': 'Overlays',
+	layers: [
+		new ol.layer.Tile({
+			title: 'Tax Lots',
+			opacity: 0.5,
+			source: new ol.source.TileWMS({
+				url: domain + '/gis/geoserver/wms',
+				params: {'LAYERS': 'misc-gis:web_map_taxlots', 'TILED': true},
+				serverType: 'geoserver'
+			})
+		})
+	]
 });
-
-tm_carto.setVisible(false);
-
-var dev_taxlots = new ol.layer.Tile({
-	source: new ol.source.TileWMS({
-		url: domain + '/gis/geoserver/wms',
-		params: {'LAYERS': 'misc-gis:web_map_taxlots', 'TILED': true},
-		serverType: 'geoserver'
-	})
-});
-
-dev_taxlots.setOpacity(0.5);
 
 var layers = [
-	tm_aerial,
-	tm_carto,
-	dev_taxlots
+	base_maps,
+	overlays
 ];
 
 
-// Map object and view
+// Initial map object, view, and controls
 var map = new ol.Map({
 	layers: layers,
 	target: 'map',
@@ -65,23 +77,24 @@ var map = new ol.Map({
 	})
 });
 
+var layerSwitcher = new ol.control.LayerSwitcher({
+	tipLabel: 'layer control' // Optional label for button
+});
+map.addControl(layerSwitcher)
+
 
 // Legend functionality
 $(document).ready(function(){
 	$('#legend-wrapper').hide();
-});
 
-$(document).ready(function(){
 	$('.legend-btn').click(function(){
 		$('#legend-wrapper').show();
-		$('#lb-wrapper').hide();
+		$('#legend-btn-wrapper').hide();
 	});
-});
 
-$(document).ready(function(){
 	$('.legend').click(function(){
 		$('#legend-wrapper').hide();
-		$('#lb-wrapper').show();
+		$('#legend-btn-wrapper').show();
 	});
 });
 
@@ -94,51 +107,18 @@ $(document).ready(function(){
 	function(){
 		$(this).css('background-color', 'rgba(255, 255, 255, 0.4)');
 	});
-});
 
-$(document).ready(function(){
 	$('.legend-btn').hover(function(){
 		$(this).css('background-color', 'rgba(0, 60, 136, 0.7)');
 	},
 	function(){
 		$(this).css('background-color', 'rgba(0, 60, 136, 0.5)');
 	});
-});
 
-$(document).ready(function(){
 	$('.legend').hover(function(){
-		$(this).css('background-color', 'rgba(255, 255, 255, 0.75)');
+		$(this).css('background-color', 'rgba(255, 255, 255, 0.8)');
 	},
 	function(){
 		$(this).css('background-color', 'rgba(255, 255, 255, 0.6)');
 	});
 });
-
-
-// Layer panel functionality 
-/*$(document).ready(function(){
-	$('#lp-wrapper').hide();
-});*/
-
-
-// Layer panel appearance
-$(document).ready(function(){
-	$('.lyr-cntrl-btn').hover(function(){
-		$(this).css('background-color', 'rgba(255, 255, 255, 0.75)');
-	},
-	function(){
-		$(this).css('background-color', 'rgba(255, 255, 255, 0.6)');
-	});
-});
-
-//http://openlayers.org/en/master/examples/layer-group.js
-/*function bindInputs(layer_id, layer) {
-  new ol.dom.Input(document.getElementById(layer_id))
-      .bindTo('checked', layer, 'visible');
-};
-*/
-var aerial_vis = new ol.dom.Input($('#aerial_vis')[0])
-aerial_vis.bindTo('checked', tm_aerial, 'visible');
-
-var carto_vis = new ol.dom.Input($('#carto_vis')[0])
-carto_vis.bindTo('checked', tm_carto, 'visible');

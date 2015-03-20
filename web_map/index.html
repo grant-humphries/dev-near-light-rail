@@ -4,13 +4,12 @@
     <meta charset='UTF-8'>
     <link rel='stylesheet' href='map.css' type='text/css'>
     <link rel='stylesheet' href='http://openlayers.org/en/v3.3.0/css/ol.css' type='text/css'>
-    <script src='http://openlayers.org/en/v3.3.0/build/ol.js' type='text/javascript'></script>
-    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
+    <link rel='stylesheet' href='ol3-layerswitcher-master/src/ol3-layerswitcher.css' />
     <title>dev-near-light-rail-map</title>
   </head>
   <body>
     <div id='map' class='map'>
-      <div class='cntrl-wrapper' id='lb-wrapper'>
+      <div class='cntrl-wrapper' id='legend-btn-wrapper'>
         <button class='legend-btn'>L</button>
       </div>
       <div class='cntrl-wrapper' id='legend-wrapper'>
@@ -43,19 +42,10 @@
           <div class='legend-source'>Metadata: See <a href='https://github.com/grant-humphries/dev-near-lightrail'>this github repo</a> for information on sources and methodology</div>
         </div>
       </div>
-      <div class='cntrl-wrapper' id='lc-btn-wrapper'>
-        <button class='lyr-cntrl-btn'></button>
-      </div>
-      <div class='cntrl-wrapper' id='lp-wrapper'>
-        <form class='lyr-panel'>
-          <!-- <input id='aerial_vis' type='checkbox' unchecked>aerial -->
-          <input id='aerial_vis' type='radio' name='base-map' value='aerial' checked>aerial
-          <br>
-          <!-- <input id='carto_vis' type='checkbox'>carto -->
-          <input id='carto_vis' type='radio' name='base-map' value='carto'>carto
-        </form>
-      </div>
     </div>
+    <script src='http://openlayers.org/en/v3.3.0/build/ol.js' type='text/javascript'></script>
+    <script src='ol3-layerswitcher-master/src/ol3-layerswitcher.js'></script>
+    <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.11.2/jquery.min.js'></script>
     <script src='map.js' type='text/javascript'></script>
   </body>
 </html>

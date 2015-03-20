@@ -19,7 +19,7 @@ body {
     z-index: 1;
 }
 
-#lb-wrapper {
+#legend-btn-wrapper {
     left: 16px;
     top: 80px;
 }
@@ -43,7 +43,7 @@ body {
 
 #legend-wrapper {
 	top: 80px;
-	left: 16px; /*prev 60*/
+	left: 16px;
 	padding: 4px;
 }
 
@@ -61,7 +61,7 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
     text-align: left;
     margin-bottom: 12px;
     font-weight: bold;
-    font-size: 90%;
+    font-size: 85%;
     font-family: Tahoma, Geneva, sans-serif;
 }
 
@@ -74,7 +74,7 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
 }
 
 .legend .legend-scale ul li {
-    font-size: 80%;
+    font-size: 85%;
     list-style: none;
     margin-left: 0;
     line-height: 18px;
@@ -110,25 +110,4 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
     font-family: Calibri, Tahoma, Geneva, sans-serif;
 }
 
-.lyr-cntrl-btn {
-/*	float: right;*/
-	width: 38px;
-	height: 38px;
-	background-image: url('ol3_logo.png');
-	background-repeat: no-repeat;
-	background-position: 2px;
-	background-color: rgba(255, 255, 255, 0.6);
-	border: none;
-	border-radius: 2px;
-}
-
-#lc-btn-wrapper {
-	right: 16px;
-	top: 16px;
-	padding: 3px;
-}
-
-#lp-wrapper {
-	right: 75px;
-	top: 16px;
-}
+/*----------------------------------*/
