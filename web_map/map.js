@@ -24,7 +24,7 @@ base_maps = new ol.layer.Group({
 	'title': 'Base Maps',
 	layers: [
 		new ol.layer.Tile({
-			title: 'TriMet OSM Streets',
+			title: 'TriMet-OSM Streets',
 			type: 'base',
 			visible: false,
 			source: new ol.source.XYZ({

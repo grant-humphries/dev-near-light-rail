@@ -61,7 +61,7 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
     text-align: left;
     margin-bottom: 12px;
     font-weight: bold;
-    font-size: 85%;
+    font-size: 80%;
     font-family: Tahoma, Geneva, sans-serif;
 }
 
@@ -74,7 +74,7 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
 }
 
 .legend .legend-scale ul li {
-    font-size: 85%;
+    font-size: 80%;
     list-style: none;
     margin-left: 0;
     line-height: 18px;
