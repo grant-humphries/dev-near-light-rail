@@ -111,3 +111,8 @@ https://www.mapbox.com/tilemill/docs/guides/advanced-legends/*/
 }
 
 /*----------------------------------*/
+
+/*change font of attribution to match rest of map*/
+.ol-attribution li {
+    font-family: Calibri, Tahoma, Geneva, sans-serif;
+}
