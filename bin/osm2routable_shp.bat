@@ -15,11 +15,12 @@ set pg_user=postgres
 ::Prompt the user to enter their postgres password, pgpassword is a keyword and will set 
 ::the password for all psotgres commands in this session
 set /p pgpassword="Enter postgres password: "
+echo %pgpassword%
 
 call:createPostgisDb
 call:runOsmosis
-call:buildStreetsPaths
-call:export2shp
+::call:buildStreetsPaths
+::call:export2shp
 
 goto:eof
 
@@ -63,12 +64,17 @@ set tag_transform=%code_workspace%\osmosis\tagtransform.xml
 ::Without 'call' command here this script will stop after the osmosis command
 ::See osmosis documentation here: http://wiki.openstreetmap.org/wiki/Osmosis/Detailed_Usage#Data_Manipulation_Tasks
 ::The or-wa.osm extract is being trimmed to roughly the bounding box of the trimet district
-call osmosis ^
+::call osmosis -v ^
+::	--read-xml %osm_data% ^
+::	--wkv keyValueList=highway.residential,highway.footway ^
+::	--tt %tag_transform% ^
+::	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 completeWays=yes ^
+::	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword%
+
+call osmosis -v ^
 	--read-xml %osm_data% ^
-	--wkv keyValueListFile=%key_value_list% ^
-	--tt %tag_transform% ^
-	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 completeWays=yes ^
-	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword% 
+	--wkv keyValueList="highway.residential,highway.footway" ^
+	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword%
 
 goto:eof
 
