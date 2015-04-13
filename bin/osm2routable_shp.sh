@@ -88,5 +88,5 @@ export2shp() {
 
 createPostgisDb;
 runOsmosis;
-#buildStreetsPaths;
-#export2shp;
+buildStreetsPaths;
+export2shp;
