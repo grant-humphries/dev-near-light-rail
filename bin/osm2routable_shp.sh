@@ -73,7 +73,7 @@ buildStreetsPaths() {
 	# Run the 'compose_paths' sql script, this will build all streets and trails 
 	# from the decomposed osmosis osm data, the output will be inserted into a new 
 	# table called 'streets_and_trails'.  This script will also reproject the data
-	# to Oregon State Plane North (2913)
+	# to Oregon State Plane North (EPSG:2913)
 	build_paths_script="${code_dir}/postgis/compose_paths.sql"
 	psql -h $pg_host -d $pg_dbname -U $pg_user -f "$build_paths_script"
 }
