@@ -71,10 +71,15 @@ set tag_transform=%code_workspace%\osmosis\tagtransform.xml
 ::	--bounding-box left=-123.2 right=-122.2 bottom=45.2 top=45.7 completeWays=yes ^
 ::	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword%
 
-call osmosis -v ^
-	--read-xml %osm_data% ^
-	--wkv keyValueList="highway.residential,highway.footway" ^
-	--write-pgsql host=%pg_host% database=%db_name% user=%pg_user% password=%pgpassword%
+call osmosis ^
+	--read-xml $osm_data -v ^
+	--wkv keyValueListFile="${key_value_list}" ^
+	--used-node ^
+	--tt "$tag_transform" ^
+	--bb left='-123.2' right='-122.2' bottom='45.2' top='45.7' ^
+		completeWays=yes ^
+	--write-pgsql host=$pg_host database=$pg_dbname ^
+		user=$pg_user password=$PGPASSWORD 
 
 goto:eof
 

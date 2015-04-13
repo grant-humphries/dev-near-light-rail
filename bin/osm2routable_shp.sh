@@ -61,6 +61,7 @@ runOsmosis() {
 	osmosis \
 	--read-xml $osm_data -v \
 	--wkv keyValueListFile="${key_value_list}" \
+	--used-node \
 	--tt "$tag_transform" \
 	--bb left='-123.2' right='-122.2' bottom='45.2' top='45.7' \
 		completeWays=yes \
