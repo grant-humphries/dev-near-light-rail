@@ -1,4 +1,4 @@
-# Copyright: (c) Grant Humphries for TriMet, 2013
+# Grant Humphries, 2013
 # ArcGIS Version:   10.2
 # Python Version:   2.7.3
 #--------------------------------

@@ -1,4 +1,4 @@
---Grant Humphries for TriMet, 2013-14
+--Grant Humphries, 2013-14
 --PostGIS Version: 2.1
 --PostGreSQL Version: 9.3
 ---------------------------------

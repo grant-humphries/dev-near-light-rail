@@ -1,4 +1,4 @@
-# Grant Humphries for TriMet, 2013-14
+# Grant Humphries, 2013-14
 # ArcGIS Version:   10.2.2
 # Python Version:   2.7.5
 #--------------------------------

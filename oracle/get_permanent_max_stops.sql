@@ -1,4 +1,4 @@
---Grant Humphries for TriMet, 2014
+--Grant Humphries, 2014
 --Oracle version: 11.2.0.3
 --sqlplus version: 11.2.0.1
 ----------------------------------
