@@ -1,2 +1,12 @@
 *.db
+
+# pycharm config
 .idea/
+
+# buildout files
+.installed.cfg
+bin/
+develop-eggs/
+eggs/
+parts/
+lightraildev.egg-info/

@@ -47,13 +47,17 @@ where loc.location_id = rs.location_id
 	and r.route_usage = 'R'
 	--to be a 'permanent', a stop must either be in the landmark table or 
 	--allow passengers during a service period that end's after today's date
-	and (exists (select null from landmark_location ll
-					where ll.location_id = loc.location_id
-					and exists (select null from landmark lm
-								where lm.landmark_id = ll.landmark_id
-								and exists (select null from landmark_type lt
-											where lt.landmark_id = lm.landmark_id
-											and landmark_type = 7)))
+	and (
+	    exists (
+	        select null from landmark_location ll
+            where ll.location_id = loc.location_id
+                and exists (
+                    select null from landmark lm
+                    where lm.landmark_id = ll.landmark_id
+                        and exists (
+                            select null from landmark_type lt
+                            where lt.landmark_id = lm.landmark_id
+                                and landmark_type = 7)))
 		or loc.passenger_access_code != 'N')
 	--Some stops may or may not go into service one day are added to the system
 	--as place holders and given coordinates of 0, 0

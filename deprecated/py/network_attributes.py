@@ -12,17 +12,17 @@
 # Value: (function below).  Note that for this function 'True' means walking is prohibited and 'False'
 # means that it's allowed
 def footPermissions(foot, access, highway, indoor):
-	if foot in ('yes', 'designated', 'permissive'):
-		return False
-	# note that during the building of osm_foot shapefile all ways that were tagged highway=construction
-	# and that had a valid street type value in the construction tag had that value transferred to the
-	# highway field.  this is because we want to route along streets that are under construction in this
-	# analysis unless there finished type isn't specified (in which case the 'construction' value would
-	# persist in the highway field)
-	elif access == 'no' or highway in ('trunk', 'motorway', 'construction') or foot == 'no' or indoor == 'yes':
-		return True
-	else:
-		return False
+    if foot in ('yes', 'designated', 'permissive'):
+        return False
+    # note that during the building of osm_foot shapefile all ways that were tagged highway=construction
+    # and that had a valid street type value in the construction tag had that value transferred to the
+    # highway field.  this is because we want to route along streets that are under construction in this
+    # analysis unless there finished type isn't specified (in which case the 'construction' value would
+    # persist in the highway field)
+    elif access == 'no' or highway in ('trunk', 'motorway', 'construction') or foot == 'no' or indoor == 'yes':
+        return True
+    else:
+        return False
 
 footPermissions(!foot!, !access!, !highway!, !indoor!)
 
@@ -41,7 +41,7 @@ footPermissions(!foot!, !access!, !highway!, !indoor!)
 
 # length is assumed to be in feet and walk speed is 3 miles per hour in this case
 def walkMinutes(length):
-	walk_time = length / (5280 * (3 / float(60)))
-	return walk_time
+    walk_time = length / (5280 * (3 / float(60)))
+    return walk_time
 
 walkMinutes(!Shape!)
