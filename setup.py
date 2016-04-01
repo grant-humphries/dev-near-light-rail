@@ -7,7 +7,10 @@ setup(
     dependency_links=['http://dev.trimet.org/pypi/dist/'],
     description='',
     entry_points={
-        'console_scripts': []
+        'console_scripts': [
+            'get_max_stops = lightraildev.get_permanent_max_stops.py:main',
+            'create_isochrones = lightraildev.create_isochrones.py:main'
+        ]
     },
     install_requires=[
         # arcpy is a requirement as well, but arcpy is terrible for
