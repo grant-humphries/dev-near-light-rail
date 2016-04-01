@@ -4,7 +4,7 @@ import sys
 from os.path import exists, join
 
 import timing
-from arcpy import env, SpatialReference
+from arcpy import env, CheckOutExtension, SpatialReference
 from arcpy.analysis import GenerateNearTable
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
@@ -13,7 +13,7 @@ from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
 # Check out the Network Analyst extension
-arcpy.CheckOutExtension("Network")
+CheckOutExtension("Network")
 
 # Set environment variables
 env.overwriteOutput = True

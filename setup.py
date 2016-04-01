@@ -8,8 +8,8 @@ setup(
     description='',
     entry_points={
         'console_scripts': [
-            'get_max_stops = lightraildev.get_permanent_max_stops.py:main',
-            'create_isochrones = lightraildev.create_isochrones.py:main'
+            'get_max_stops = lightraildev.get_permanent_max_stops:main',
+            # 'create_isochrones = lightraildev.create_isochrones:main'
         ]
     },
     install_requires=[

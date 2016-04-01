@@ -1,4 +1,5 @@
 *.db
+*.pyc
 
 # pycharm config
 .idea/
@@ -8,5 +9,5 @@
 bin/
 develop-eggs/
 eggs/
-parts/
 lightraildev.egg-info/
+parts/

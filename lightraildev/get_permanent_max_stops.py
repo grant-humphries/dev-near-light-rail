@@ -1,15 +1,25 @@
+import numbers
 import sys
 from argparse import ArgumentParser
+from collections import OrderedDict
 from datetime import date
-from os.path import abspath, dirname
+from os.path import join
 
+import fiona
+from fiona.crs import from_epsg
+from shapely.geometry import mapping, Point
 from sqlalchemy import create_engine, func, or_
 from sqlalchemy.orm import aliased, sessionmaker
 
 from trimet.model.oracle.trans import Location, RouteDef, RouteStopDef, \
     Landmark, LandmarkLocation, LandmarkType
 
-HOME = dirname(abspath(sys.argv[0]))
+RLIS_DIR = '//gisstore/gis/Rlis'
+TAXLOTS = join(RLIS_DIR, 'TAXLOT', 'taxlots.shp')
+date_dir =
+
+HOME = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
+STOPS_SHP = join(HOME, 'data', 'max_stops.shp')
 
 
 def get_permanent_max_stops():
@@ -30,6 +40,7 @@ def get_permanent_max_stops():
     lmt = aliased(LandmarkType)
 
     today = date.today()
+    date_format = 'DD-MON-YY'
 
     # the following form a nested 'where exists' subquery that ensures
     # that a location exists as a platform (landmark_type=7)
@@ -55,19 +66,25 @@ def get_permanent_max_stops():
         session.query(
             loc.location_id.label('stop_id'),
             loc.public_location_description.label('stop_name'),
-            func.listagg(rd.route_number).label('routes'),
-            func.min(rsd.route_stop_begin_date).label('begin_date'),
-            func.max(rsd.route_stop_end_date).label('end_date'),
+            func.collect(rd.route_number.distinct()).label('routes'),
+            func.collect(
+                rd.public_route_description.distinct()).label('route_desc'),
+            func.to_char(
+                func.min(rsd.route_stop_begin_date),
+                date_format).label('begin_date'),
+            func.to_char(
+                func.max(rsd.route_stop_end_date),
+                date_format).label('end_date'),
             loc.x_coordinate.label('x_coord'),
             loc.y_coordinate.label('y_coord')).
         filter(
             loc.location_id == rsd.location_id,
             rd.route_number == rsd.route_number,
             rd.route_begin_date == rsd.route_begin_date,
-            rd.route_end_date < today,
+            rd.route_end_date > today,
             rd.is_light_rail,
             rd.is_revenue,
-            rsd.route_stop_end_date < today,
+            rsd.route_stop_end_date > today,
             or_(sub3.exists(),
                 loc.passenger_access_code != 'N'),
             # Some stops may or may not go into service one day are
@@ -83,15 +100,56 @@ def get_permanent_max_stops():
         all()
     )
 
-    for row in max_stops:
-        print row
-        exit()
+    return max_stops
 
 
 def write_stops_to_shapefile():
     """"""
 
-    pass
+    max_stops = get_permanent_max_stops()
+
+    # convert query results into format suitable for insert
+    features = list()
+    for row in max_stops:
+        attributes = OrderedDict(zip(row.keys(), row))
+
+        x = attributes.pop('x_coord')
+        y = attributes.pop('y_coord')
+        geom = Point(x, y)
+
+        for k, v in attributes.items():
+            if isinstance(v, list):
+                if isinstance(v[0], numbers.Number):
+                    str_list = sorted([str(int(i)) for i in v])
+                    v = ':{}:'.format(':; :'.join(str_list))
+                else:
+                    v = '; '.join(sorted(v))
+            elif isinstance(v, unicode):
+                v = str(v)
+
+            attributes[k] = v
+
+        features.append({
+            'geometry': mapping(geom),
+            'properties': attributes
+        })
+
+    # create metadata object for shapefile
+    sample_feat = features[0]['properties'].items()
+    fields = OrderedDict([(k, type(v).__name__) for k, v in sample_feat])
+
+    metadata = {
+        'crs': from_epsg(2913),
+        'driver': 'ESRI Shapefile',
+        'schema': {
+            'geometry': 'Point',
+            'properties': fields
+        }
+    }
+
+    with fiona.open(STOPS_SHP, 'w', **metadata) as stops_shp:
+        for feat in features:
+            stops_shp.write(feat)
 
 
 def process_oracle_options(arglist=None):
@@ -121,11 +179,13 @@ def process_oracle_options(arglist=None):
 def main():
     """"""
 
+    # As of 4/2016 there are 166 permanent MAX stops
+
     global gv
     args = sys.argv[1:]
     gv = process_oracle_options(args)
 
-    get_permanent_max_stops()
+    write_stops_to_shapefile()
 
 
 if __name__ == '__main__':
