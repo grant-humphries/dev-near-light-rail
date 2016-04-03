@@ -9,14 +9,17 @@ setup(
     entry_points={
         'console_scripts': [
             'get_max_stops = lightraildev.get_permanent_max_stops:main',
-            # 'create_isochrones = lightraildev.create_isochrones:main'
+            'osm2routable_shp = lightraildev.osm2routable_shp:main',
+            'create_isochrones = lightraildev.create_isochrones:main'
         ]
     },
     install_requires=[
-        # arcpy is a requirement as well, but arcpy is terrible for
-        # real python development so buildout can't find it
+        # arcpy is a requirement as well, but arcpy is terrible for real
+        # python development so buildout can't find it
         # 'arcpy',
         'fiona>=1.6.2',
+        'overpass>=0.1.0',
+        'pyproj>=1.9.4',
         'shapely>=1.3',
         'sqlalchemy>=1.0.9',
         'trimet.model.oracle.trans>=1.4.6'

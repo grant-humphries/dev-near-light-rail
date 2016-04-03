@@ -11,10 +11,12 @@ date_dir = datetime.fromtimestamp(getmtime(TAXLOTS)).strftime('%Y_%m')
 HOME = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
 DATA_DIR = join(HOME, 'data', date_dir)
 SHP_DIR = join(DATA_DIR, 'shp')
+TEMP_DIR = join(DATA_DIR, 'temp')
 MAX_STOPS = join(DATA_DIR, 'shp', 'max_stops.shp')
 
-if not exists(SHP_DIR):
-    os.makedirs(SHP_DIR)
+for dir_ in (SHP_DIR, TEMP_DIR):
+    if not exists(dir_):
+        os.makedirs(dir_)
 
 DESC_FIELD = 'route_desc'
 ID_FIELD = 'stop_id'

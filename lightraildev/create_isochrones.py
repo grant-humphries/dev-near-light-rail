@@ -15,11 +15,7 @@ from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
 from lightraildev.common import DATA_DIR, DESC_FIELD, HOME, ID_FIELD, \
-    MAX_STOPS, ROUTES_FIELD, SHP_DIR, STOP_FIELD
-
-TEMP_DIR = join(DATA_DIR, 'temp')
-if not exists(TEMP_DIR):
-    os.makedirs(TEMP_DIR)
+    MAX_STOPS, ROUTES_FIELD, SHP_DIR, STOP_FIELD, TEMP_DIR
 
 MAX_ZONES = join(HOME, 'data', 'shp', 'max_stop_zones.shp')
 ISOCHRONES = join(SHP_DIR, 'isochrones.shp')
