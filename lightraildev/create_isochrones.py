@@ -1,10 +1,12 @@
 import os
 import re
 import sys
-from os.path import exists, join
+from argparse import ArgumentParser
+from datetime import timedelta
+from os.path import basename, dirname, exists, join
+from timeit import timeit
 
-import timing
-from arcpy import env, CheckOutExtension, SpatialReference
+from arcpy import env, CheckOutExtension, ListFields, SpatialReference
 from arcpy.analysis import GenerateNearTable
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
@@ -12,34 +14,24 @@ from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
 from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
-# Check out the Network Analyst extension
+from lightraildev.common import DATA_DIR, DESC_FIELD, HOME, ID_FIELD, \
+    MAX_STOPS, ROUTES_FIELD, SHP_DIR, STOP_FIELD
+
+TEMP_DIR = join(DATA_DIR, 'temp')
+if not exists(TEMP_DIR):
+    os.makedirs(TEMP_DIR)
+
+MAX_ZONES = join(HOME, 'data', 'shp', 'max_stop_zones.shp')
+ISOCHRONES = join(SHP_DIR, 'isochrones.shp')
+
+DIST_FIELD = 'walk_dist'
+UNIQUE_FIELD = 'name'
+YEAR_FIELD = 'incpt_year'
+ZONE_FIELD = 'max_zone'
+
+# configure arcpy settings
 CheckOutExtension("Network")
-
-# Set environment variables
 env.overwriteOutput = True
-env.addOutputsToMap = True
-
-# Set workspace, the user will be prompted to enter the name of the
-# subfolder that data is to be written to for the current iteration
-project_folder = raw_input(
-    'Enter the name of the subfolder being used for this iteration of the '
-    'project (should be in the form "YYYY_MM"): ')
-env.workspace = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
-data_workspace = join(env.workspace, 'data', project_folder)
-
-# Assign project datasets to variables
-max_stops = join(data_workspace, 'max_stops.shp')
-max_zones = join(env.workspace, 'data', 'max_stop_zones.shp')
-final_isochrones = join(data_workspace, 'max_stop_isochrones.shp')
-
-# These variables will potentially be assigned values later by functions below
-service_area_layer = None
-sa_facilities = None
-sa_isochrones = None
-
-# Create a 'temp' folder to hold intermediate datasets
-if not exists(join(data_workspace, 'temp')):
-    os.makedirs(join(data_workspace, 'temp'))
 
 
 def add_name_field():
@@ -50,15 +42,17 @@ def add_name_field():
     analyst output
     """
 
-    f_name = 'name'
-    f_type = 'LONG'
-    AddField(max_stops, f_name, f_type)
+    fields = [f.name for f in ListFields(MAX_STOPS)]
 
-    fields = ['stop_id', 'name']
-    with UpdateCursor(max_stops, fields) as cursor:
-        for stop_id, name in cursor:
-            name = stop_id
-            cursor.updateRow((stop_id, name))
+    if UNIQUE_FIELD not in fields:
+        f_type = 'LONG'
+        AddField(MAX_STOPS, UNIQUE_FIELD, f_type)
+    
+        u_fields = [ID_FIELD, UNIQUE_FIELD]
+        with UpdateCursor(MAX_STOPS, u_fields) as cursor:
+            for stop_id, name in cursor:
+                name = stop_id
+                cursor.updateRow((stop_id, name))
 
 
 def assign_max_zones():
@@ -68,32 +62,30 @@ def assign_max_zones():
     """
 
     # Create a mapping from zone object id's to their names
-    max_zone_dict = {}
-    fields = ['OID@', 'name']
-    with SearchCursor(max_zones, fields) as cursor:
+    max_zone_dict = dict()
+    fields = ['OID@', UNIQUE_FIELD]
+    with SearchCursor(MAX_ZONES, fields) as cursor:
         for oid, name in cursor:
             max_zone_dict[oid] = name
 
     # Find the nearest zone to each stop
-    stop_zone_n_table = join(data_workspace, 'temp/stop_zone_near_table.dbf')
-    GenerateNearTable(max_stops, max_zones, stop_zone_n_table)
+    stop_zone_table = join(TEMP_DIR, 'stop_zone_near_table.dbf')
+    GenerateNearTable(MAX_STOPS, MAX_ZONES, stop_zone_table)
 
     # Create a mapping from stop oid's to zone oid's
-    stop2zone_dict = {}
+    stop2zone = dict()
     fields = ['IN_FID', 'NEAR_FID']
-    with SearchCursor(stop_zone_n_table, fields) as cursor:
+    with SearchCursor(stop_zone_table, fields) as cursor:
         for stop_oid, zone_oid in cursor:
-            stop2zone_dict[stop_oid] = zone_oid
+            stop2zone[stop_oid] = zone_oid
 
-    # Add a field to store the zone name on the stops fc and populate it
-    f_name = 'max_zone'
     f_type = 'TEXT'
-    AddField(max_stops, f_name, f_type)
+    AddField(MAX_STOPS, ZONE_FIELD, f_type)
 
-    fields = ['OID@', 'max_zone']
-    with UpdateCursor(max_stops, fields) as cursor:
+    fields = ['OID@', ZONE_FIELD]
+    with UpdateCursor(MAX_STOPS, fields) as cursor:
         for oid, zone in cursor:
-            zone = max_zone_dict[stop2zone_dict[oid]]
+            zone = max_zone_dict[stop2zone[oid]]
 
             cursor.updateRow((oid, zone))
 
@@ -104,15 +96,14 @@ def add_inception_year():
     lines the year from the oldest line will be assigned.
     """
 
-    f_name = 'incpt_year'
-    f_type = 'SHORT'
-    AddField(max_stops, f_name, f_type)
+    f_type = 'LONG'
+    AddField(MAX_STOPS, YEAR_FIELD, f_type)
 
-    # Note that 'MAX Year' for stops within the CBD are varaible as
+    # Note that 'MAX Year' for stops within the CBD are variable as
     # stops within that region were not all built at the same time
     # (this is not the case for all other MAX zones)
-    fields = ['stop_id', 'route_desc', 'max_zone', 'incpt_year']
-    with UpdateCursor(max_stops, fields) as cursor:
+    fields = [ID_FIELD, DESC_FIELD, ZONE_FIELD, YEAR_FIELD]
+    with UpdateCursor(MAX_STOPS, fields) as cursor:
         for stop_id, rte_desc, zone, year in cursor:
             if 'MAX Blue Line' in rte_desc \
                     and zone not in ('West Suburbs', 'Southwest Portland'):
@@ -132,13 +123,11 @@ def add_inception_year():
                 print 'Stop {} not assigned a MAX Year, cannot proceed ' \
                       'with out this assignment, examine code/data for ' \
                       'errors'.format(stop_id)
-                sys.exit()
+                exit()
 
             cursor.updateRow((stop_id, rte_desc, zone, year))
 
 
-# This function is not being used at this time as the same walk
-# distance is being used for each stop
 def create_walk_groups(zones, name, inverse=False):
     """If different walk distances must be used in the creation of
     isochrones for different stops they must be generated by separate
@@ -148,23 +137,20 @@ def create_walk_groups(zones, name, inverse=False):
     """
 
     # Create a feature layer so that selections can be made on the data
-    max_stop_layer = 'max_stop_layer'
-    MakeFeatureLayer(max_stops, max_stop_layer)
+    stops_layer = 'max_stops'
+    MakeFeatureLayer(MAX_STOPS, stops_layer)
 
     # Assign a variable that will determine if the output is the zones
     # provide or all of the zones that are not provided
-    if inverse:
-        negate = 'NOT'
-    else:
-        negate = ''
+    negate = 'NOT' if inverse else ''
 
-    zones_query = "'" + "', '".join(zones) + "'"
     select_type = 'NEW_SELECTION'
-    where_clause = '"max_zone" ' + negate + ' IN (' + zones_query + ')'
-    SelectLayerByAttribute(max_stop_layer, select_type, where_clause)
+    zones_str = ', '.join("'{}'".format(z) for z in zones)
+    where_clause = '"{0}" {1} IN ({2})'.format(ZONE_FIELD, negate, zones_str) 
+    SelectLayerByAttribute(stops_layer, select_type, where_clause)
 
-    zone_stops = join(data_workspace, 'temp', name + '.shp')
-    CopyFeatures(max_stop_layer, zone_stops)
+    zone_stops = join(TEMP_DIR, '{}.shp'.format(name))
+    CopyFeatures(stops_layer, zone_stops)
 
     return zone_stops
 
@@ -175,29 +161,26 @@ def create_isochrone_fc():
     """
 
     geom_type = 'POLYGON'
-    ore_state_plane_n = SpatialReference(2913)
-    CreateFeatureclass(
-        os.path.dirname(final_isochrones), os.path.basename(final_isochrones),
-        geom_type, spatial_reference=ore_state_plane_n)
+    ospn = SpatialReference(2913)
+    CreateFeatureclass(dirname(ISOCHRONES), basename(ISOCHRONES),
+                       geom_type, spatial_reference=ospn)
 
-    # Add all fields that are needed in the new feature class, and drop
-    # the 'Id' field that exists by default
     field_names = [
-        'stop_id',  'stop_name',  'routes',
-        'max_zone', 'incpt_year', 'walk_dist']
+        ID_FIELD,  STOP_FIELD,  ROUTES_FIELD,
+        ZONE_FIELD, YEAR_FIELD, DIST_FIELD]
 
     for f_name in field_names:
-        if f_name in ('stop_id', 'incpt_year'):
+        if f_name in (ID_FIELD, YEAR_FIELD):
             f_type = 'LONG'
-        elif f_name in ('stop_name', 'routes', 'max_zone'):
+        elif f_name in (STOP_FIELD, ROUTES_FIELD, ZONE_FIELD):
             f_type = 'TEXT'
-        elif f_name == 'walk_dist':
+        elif f_name == DIST_FIELD:
             f_type = 'DOUBLE'
 
-        AddField(final_isochrones, f_name, f_type)
+        AddField(ISOCHRONES, f_name, f_type)
 
-    drop_field = 'Id'
-    DeleteField(final_isochrones, drop_field)
+    # drop Id field that is created by default
+    DeleteField(ISOCHRONES, 'Id')
 
 
 def create_service_area():
@@ -205,26 +188,20 @@ def create_service_area():
      ability to make isochrones
      """
 
-    global service_area_layer, sa_facilities, sa_isochrones
-
     # Create and configure a service area layer
-    osm_network = join(data_workspace, 'osm_foot_ND.nd')
-    service_area_name = 'service_area_layer'
+    osm_network = join(DATA_DIR, 'osm_foot_ND.nd')
+    sa_name = 'service_area'
     impedance_attribute = 'Length'
     travel_from_to = 'TRAVEL_TO'
-    permissions = 'foot_permissions'
-    service_area_layer = MakeServiceAreaLayer(
-        osm_network, service_area_name, impedance_attribute, travel_from_to,
-        restriction_attribute_name=permissions).getOutput(0)
+    gv.sa_layer = MakeServiceAreaLayer(
+        osm_network, sa_name, impedance_attribute, travel_from_to,
+        restriction_attribute_name='foot_permissions').getOutput(0)
 
     # Within the service area layer there are several sub-layers where
     # things are stored such as facilities, polygons, and barriers.
-    # Grab the facilities and polygons sublayers and assign them to
-    # variables
-    sa_sublayer_dict = GetNAClassNames(service_area_layer)
-
-    sa_facilities = sa_sublayer_dict['Facilities']
-    sa_isochrones = sa_sublayer_dict['SAPolygons']
+    sa_sub_layers = GetNAClassNames(gv.sa_layer)
+    gv.facilities = sa_sub_layers['Facilities']
+    gv.isochrones = sa_sub_layers['SAPolygons']
 
 
 def generate_isochrones(locations, break_value):
@@ -233,45 +210,35 @@ def generate_isochrones(locations, break_value):
     break value
     """
 
-    if not service_area_layer:
+    if not gv.sa_layer:
         create_service_area()
 
-    # Set the break distance for this batch of stops
-    solver_props = GetSolverProperties(service_area_layer)
+    solver_props = GetSolverProperties(gv.sa_layer)
     solver_props.defaultBreaks = break_value
 
-    # Add the stops to the service area (sub)layer
-    exclude_for_snapping = 'EXCLUDE'
-    clear_other_stops = 'CLEAR'
-
     # Service area locations must be stored in the facilities sublayer
-    AddLocations(service_area_layer, sa_facilities, locations,
+    clear_other_stops = 'CLEAR'
+    exclude_for_snapping = 'EXCLUDE'
+    AddLocations(gv.sa_layer, gv.facilities, locations,
                  append=clear_other_stops,
                  exclude_restricted_elements=exclude_for_snapping)
 
     # Generate the isochrones for this batch of stops, the output will
-    # automatically go to the 'SAPolygons' sub layer of the service
-    # area layer which has been assigned to the variable 'sa_isochrones'
-    Solve(service_area_layer)
+    # automatically go to the 'gv.isochrones' variable
+    Solve(gv.sa_layer)
 
-    # create an insert cursor that writes to isochrone feature class
-    i_fields = ['Shape@', 'stop_id', 'walk_dist']
-    i_cursor = InsertCursor(final_isochrones, i_fields)
+    i_fields = ['SHAPE@', ID_FIELD, DIST_FIELD]
+    i_cursor = InsertCursor(ISOCHRONES, i_fields)
 
-    # Grab the needed fields from the isochrones and write them to the
-    # feature class created to house them.  The features will only be
-    # added if their stop_id is not in the final isochrones fc
-    fields = ['Shape@', 'name']
-    with SearchCursor(sa_isochrones, fields) as cursor:
+    s_fields = ['SHAPE@', UNIQUE_FIELD]
+    with SearchCursor(gv.isochrones, s_fields) as cursor:
         for geom, output_name in cursor:
-            iso_attributes = re.split(' : 0 - ', output_name)
-
+            iso_attributes = re.split('\s:\s0\s-\s', output_name)
             stop_id = int(iso_attributes[0])
             break_value = int(iso_attributes[1])
 
             i_cursor.insertRow((geom, stop_id, break_value))
 
-    # clean up
     del i_cursor
 
 
@@ -281,62 +248,72 @@ def add_iso_attributes():
     (which are in the 'stop_id' and 'name' fields
     """
 
-    fields = ['stop_id', 'stop_name', 'routes', 'max_zone', 'incpt_year']
-    rail_stop_dict = {}
-    with SearchCursor(max_stops, fields) as cursor:
-        for stop_id, stop_name, routes, zone, year in cursor:
-            rail_stop_dict[stop_id] = (
-                stop_id, stop_name, routes.strip(), zone, year)
+    rail_stop_dict = dict()
+    s_fields = [ID_FIELD, STOP_FIELD, ROUTES_FIELD, ZONE_FIELD, YEAR_FIELD]
+    with SearchCursor(MAX_STOPS, s_fields) as s_cursor:
+        sid_ix = s_cursor.fields.index(ID_FIELD)
+        
+        for row in s_cursor:
+            stop_id = row[sid_ix]
+            rail_stop_dict[stop_id] = row
 
-    with UpdateCursor(final_isochrones, fields) as cursor:
-        for stop_id, stop_name, routes, zone, year in cursor:
-            cursor.updateRow(rail_stop_dict[stop_id])
+    # area value will be used to check for errors in isochrone creation
+    iso_fields = [f.name for f in ListFields(ISOCHRONES)]
+    area_field = 'area'
+    if area_field not in iso_fields:
+        f_type = 'DOUBLE'
+        AddField(ISOCHRONES, area_field, f_type)
+    
+    area_val = 'SHAPE@AREA'
+    u_fields = s_fields + [area_field, area_val]
+    with UpdateCursor(ISOCHRONES, u_fields) as u_cursor:
+        sid_ix = u_cursor.fields.index(ID_FIELD)
+        val_ix = u_cursor.fields.index(area_val)
+        
+        for row in u_cursor:
+            stop_id = row[sid_ix]
+            area = row[val_ix]
+            
+            i_row = rail_stop_dict[stop_id]
+            i_row.extend([area, area])
+            u_cursor.updateRow(i_row)
 
 
-def get_iso_area():
-    """Add the area of the isochrones as an attribute, this will be
-    used later to check for errors
-    """
+def process_options(args):
+    """"""
 
-    f_name = 'area'
-    f_type = 'FLOAT'
-    AddField(final_isochrones, f_name, f_type)
+    parser = ArgumentParser()
+    parser.add_argument(
+        '-d', '--walk_distance',
+        type=int,
+        default=2640,
+        help='distance, in feet, that defines the limit of the walk shed'
+    )
 
-    fields = ['SHAPE@AREA', 'area']
-    with UpdateCursor(final_isochrones, fields) as cursor:
-        for area_value, area_field in cursor:
-            area_field = area_value
-            cursor.updateRow((area_value, area_field))
+    options = parser.parse_args(args)
+    return options
 
 
 def main():
     """"""
-    
+
+    # a single global namespace variable is used here to hold all
+    # so that the global namespace doesn't get clutter
+    global gv
+    args = sys.argv[1:]
+    gv = process_options(args)
+
     # Prep stop data
     add_name_field()
     assign_max_zones()
     add_inception_year()
-    
-    # Prep for creation of walksheds
+
     create_isochrone_fc()
-    
-    # Create service area layer and walksheds, walk distance is 2640
-    # feet (0.5 miles), have experimented with using 2475', 3300' and
-    # 4125', but higher-ups seem firm with this number now
-    walk_distance = 2640
-    generate_isochrones(max_stops, walk_distance)
-    
-    # Add additional attributes to the isochrones
+    generate_isochrones(MAX_STOPS, gv.walk_distance)
     add_iso_attributes()
-    get_iso_area()
-    
-    # The timing module, which I found here: 
-    # http://stackoverflow.com/questions/1557571
-    # keeps track of the run time of the script
-    timing.log('isochrones created')
-    
-    # ran in 9:15 on 2/19/14
 
 
 if __name__ == '__main__':
-    main()
+    runtime_secs = timeit(main(), number=1)
+    print timedelta(seconds=runtime_secs)
+    # ran in 9:15 on 2/19/14

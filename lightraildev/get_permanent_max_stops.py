@@ -3,7 +3,6 @@ import sys
 from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import date
-from os.path import join
 
 import fiona
 from fiona.crs import from_epsg
@@ -11,15 +10,13 @@ from shapely.geometry import mapping, Point
 from sqlalchemy import create_engine, func, or_
 from sqlalchemy.orm import aliased, sessionmaker
 
+from lightraildev.common import DESC_FIELD, ID_FIELD, MAX_STOPS, \
+    ROUTES_FIELD, STOP_FIELD
 from trimet.model.oracle.trans import Location, RouteDef, RouteStopDef, \
     Landmark, LandmarkLocation, LandmarkType
 
-RLIS_DIR = '//gisstore/gis/Rlis'
-TAXLOTS = join(RLIS_DIR, 'TAXLOT', 'taxlots.shp')
-date_dir =
-
-HOME = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
-STOPS_SHP = join(HOME, 'data', 'max_stops.shp')
+X_FIELD = 'x_coord'
+Y_FIELD = 'y_coord'
 
 
 def get_permanent_max_stops():
@@ -62,21 +59,21 @@ def get_permanent_max_stops():
 
     # this query contains checks to ensure all permanent max stops are
     # grabbed as sometimes they're shutdown temporarily
-    max_stops = (
+    query_stops = (
         session.query(
-            loc.location_id.label('stop_id'),
-            loc.public_location_description.label('stop_name'),
-            func.collect(rd.route_number.distinct()).label('routes'),
+            loc.location_id.label(ID_FIELD),
+            loc.public_location_description.label(STOP_FIELD),
+            func.collect(rd.route_number.distinct()).label(ROUTES_FIELD),
             func.collect(
-                rd.public_route_description.distinct()).label('route_desc'),
+                rd.public_route_description.distinct()).label(DESC_FIELD),
             func.to_char(
                 func.min(rsd.route_stop_begin_date),
                 date_format).label('begin_date'),
             func.to_char(
                 func.max(rsd.route_stop_end_date),
                 date_format).label('end_date'),
-            loc.x_coordinate.label('x_coord'),
-            loc.y_coordinate.label('y_coord')).
+            loc.x_coordinate.label(X_FIELD),
+            loc.y_coordinate.label(Y_FIELD)).
         filter(
             loc.location_id == rsd.location_id,
             rd.route_number == rsd.route_number,
@@ -100,21 +97,21 @@ def get_permanent_max_stops():
         all()
     )
 
-    return max_stops
+    return query_stops
 
 
 def write_stops_to_shapefile():
     """"""
 
-    max_stops = get_permanent_max_stops()
+    query_stops = get_permanent_max_stops()
 
     # convert query results into format suitable for insert
     features = list()
-    for row in max_stops:
+    for row in query_stops:
         attributes = OrderedDict(zip(row.keys(), row))
 
-        x = attributes.pop('x_coord')
-        y = attributes.pop('y_coord')
+        x = attributes.pop(X_FIELD)
+        y = attributes.pop(Y_FIELD)
         geom = Point(x, y)
 
         for k, v in attributes.items():
@@ -147,9 +144,9 @@ def write_stops_to_shapefile():
         }
     }
 
-    with fiona.open(STOPS_SHP, 'w', **metadata) as stops_shp:
+    with fiona.open(MAX_STOPS, 'w', **metadata) as max_stops:
         for feat in features:
-            stops_shp.write(feat)
+            max_stops.write(feat)
 
 
 def process_oracle_options(arglist=None):
