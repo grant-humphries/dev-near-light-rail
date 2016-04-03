@@ -1,16 +1,17 @@
 import sys
 from argparse import ArgumentParser
 from collections import OrderedDict
+from functools import partial
 from os.path import join
 
 import fiona
 import overpass
 import pyproj
 from fiona.crs import from_epsg
+from shapely import ops
+from shapely.geometry import mapping, shape
 
 from lightraildev.common import SHP_DIR
-
-OSM_SHP = join(SHP_DIR, 'osm_foot.shp')
 
 
 def overpass2shp():
@@ -18,7 +19,7 @@ def overpass2shp():
 
     api = overpass.API()
     overpass_query = 'way["highway"~"{values}"]({bbox})'
-    values = '|'.join(gv.value_filter)
+    values = '|'.join(gv.highway_filter)
     bbox = ','.join(str(c) for c in gv.bounding_box.values())
 
     response = api.Get(overpass_query.format(values=values, bbox=bbox))
@@ -26,7 +27,7 @@ def overpass2shp():
 
     meta_fields = OrderedDict([(k, 'str') for k in gv.attribute_keys])
     metadata = {
-        'crs': from_epsg(4326),
+        'crs': from_epsg(gv.epsg),
         'driver': 'ESRI Shapefile',
         'schema': {
             'geometry': 'LineString',
@@ -34,7 +35,16 @@ def overpass2shp():
         }
     }
 
-    with fiona.open(OSM_SHP, 'w', **metadata) as osm_shp:
+    reproject = True if gv.epsg != gv.wgs84 else False
+    if reproject:
+        transformation = partial(
+            pyproj.transform,
+            pyproj.Proj(init='epsg:{}'.format(gv.wgs84)),
+            pyproj.Proj(init='epsg:{}'.format(gv.epsg), preserve_units=True)
+        )
+
+    osm_shp_path = join(SHP_DIR, 'osm_foot.shp')
+    with fiona.open(osm_shp_path, 'w', **metadata) as osm_shp:
         for feat in features:
             fields = feat['properties']
             write_fields = {k: None for k in gv.attribute_keys}
@@ -43,12 +53,19 @@ def overpass2shp():
                     write_fields[k] = v
 
             feat['properties'] = write_fields
+
+            if reproject:
+                geom = shape(feat['geometry'])
+                new_geom = ops.transform(transformation, geom)
+                feat['geometry'] = mapping(new_geom)
+
             osm_shp.write(feat)
 
 
 def process_options(args):
     """"""
 
+    wgs84, ospn = 4326, 2913
     bbox_order = ('min_lat', 'min_lon', 'max_lat', 'max_lon')
     bounding_box = (45.2, -123.2, 45.7, -122.2)
 
@@ -67,6 +84,13 @@ def process_options(args):
 
     parser = ArgumentParser()
     parser.add_argument(
+        '-a', '--attribute_keys',
+        default=attribute_keys,
+        nargs='+',
+        help='osm tag keys that will be retained as attributes on the '
+             'resultant shapefile, enter space separated'
+    )
+    parser.add_argument(
         '-b', '--bounding_box',
         default=bounding_box,
         nargs=4,
@@ -76,7 +100,17 @@ def process_options(args):
              'min_lon, max_lat, max_lot'
     )
     parser.add_argument(
-        '-v', '--value_filter',
+        '-t', '--transform',
+        default=ospn,
+        dest='epsg',
+        type=int,
+        help='data will be transformed to the spatial reference system '
+             'represented by the supplied epsg code, the data is downloaded '
+             'as {s_srs} and transformed to {d_srs} by default'.format(
+                 s_srs=wgs84, d_srs=ospn)
+    )
+    parser.add_argument(
+        '-f', '--highway_filter',
         default=highway_values,
         nargs='+',
         help='values supplied to this parameter will be paired with the key '
@@ -84,14 +118,8 @@ def process_options(args):
              '(and is within the bounding box) it will be downloaded, enter'
              'values space separated'
     )
-    parser.add_argument(
-        '-a', '--attribute_keys',
-        default=attribute_keys,
-        nargs='+',
-        help='tags that will be retained as attributes on the resultant'
-             'shapefile, enter space separated'
-    )
 
+    parser.set_defaults(wgs84=wgs84)
     options = parser.parse_args(args)
     options.bounding_box = OrderedDict(zip(bbox_order, bounding_box))
     return options

@@ -1,17 +1,20 @@
-@echo off
-setlocal EnableDelayedExpansion
+#!/usr/bin/env bash
 
-::Set project workspaces
-set workspace=G:\PUBLIC\GIS_Projects\Development_Around_Lightrail
-set git_workspace=%workspace%\github\dev-near-lightrail
+home=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail
+code_dir=$(dirname $0)
+
+echo $code_dir
+echo $0
+echo $(pwd)
+exit
 
 set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
 set data_workspace=%workspace%\data\%data_folder%
 
-::Set postgres parameters
-set pg_host=localhost
-set db_name=transit_dev
-set pg_user=postgres
+# postgres parameters
+host='localhost'
+dbname='lightraildev'
+user='postgres'
 
 ::Prompt the user to enter their postgres password, 'pgpassword' is a keyword and will automatically
 ::set the password for most postgres commands in the current session
