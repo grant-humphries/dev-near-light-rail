@@ -1,191 +1,160 @@
 #!/usr/bin/env bash
+# creates and loads a postgis database then calculates the value of
+# development around light rail using sql scripts with spatial functions
 
-home=G:/PUBLIC/GIS_Projects/Development_Around_Lightrail
-code_dir=$(dirname $0)
+# the code directory is two levels up from this script
+CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
+POSTGIS_DIR="${CODE_DIR}/postgisql"
+PROJECT_DIR='/g/PUBLIC/GIS_Projects/Development_Around_Lightrail'
+TRIMET_DIR='/g/TRIMET'
+RLIS_DIR='/g/Rlis'
 
-echo $code_dir
-echo $0
-echo $(pwd)
-exit
+CITY="${RLIS_DIR}/BOUNDARY/cty_fill.shp"
+MULTIFAMILY="${RLIS_DIR}/LAND/multifamily_housing_inventory.shp"
+ORCA="${RLIS_DIR}/LAND/orca.shp"
+TAXLOTS="${RLIS_DIR}/TAXLOTS/taxlots.shp"
+TM_DISTRICT="${TRIMET_DIR}/tm_fill.shp"
+UGB="${RLIS_DIR}/BOUNDARY/ugb.shp"
 
-set /p data_folder="Enter the name of the sub-folder holding the data for this interation of the project (should be in the form 'YYYY_MM'): "
-set data_workspace=%workspace%\data\%data_folder%
+DATA_DIR="${PROJECT_DIR}/data/$( date -r ${TAXLOTS} +%Y_%m )"
+CSV_DIR="${DATA_DIR}/csv"
+SHP_DIR="${DATA_DIR}/shp"
+
+ISOCHRONES="${SHP_DIR}/isochrones.shp"
+MAX_STOPS="${SHP_DIR}/max_stops.shp"
 
 # postgres parameters
-host='localhost'
-dbname='lightraildev'
-user='postgres'
+HOST='localhost'
+DBNAME='lightraildev'
+USER='postgres'
 
-::Prompt the user to enter their postgres password, 'pgpassword' is a keyword and will automatically
-::set the password for most postgres commands in the current session
-set /p pgpassword="Enter postgres password:"
-
-::Execute functions
-call:createPostgisDb
-call:loadShapefiles
-call:addYearbuiltValues
-call:geoprocessProperties
-call:generateStats
-call:exportToCsv
-
-::This line must be in place or functions below will run w/o being called
-goto:eof
+if [[ -z "${PGPASSWORD}" ]]; then
+    read  -s -p "Enter PostgreSQL password for user '${USER}': " PGPASSWORD
+    export PGPASSWORD
+fi
 
 
-::---------------------------------------
-:: ***Function section begins below***
-::---------------------------------------
+create_postgis_db() {
+    echo '1) Creating database...'
 
-::Great info on writing functions in batch files here:
-::http://www.dostips.com/DtTutoFunctions.php
+    dropdb -h "${HOST}" -U "${USER}" --if-exists -i "${DBNAME}"
+    createdb -h "${HOST}" -U "${USER}" "${DBNAME}"
 
-:createPostgisDb
-::Drop the database if it exists then (re)create it and enable postgis
-echo "1) Creating database..."
+    q="CREATE EXTENSION postgis;"
+    psql -h "${HOST}" -U "${USER}" -d "${DBNAME}" -c "${q}"
+}
 
-dropdb -h %pg_host% -U %pg_user% --if-exists -i %db_name%
-createdb -O %pg_user% -h %pg_host% -U %pg_user% %db_name%
+load_shapefiles() {
+    echo '2) Loading shapefiles into Postgres...'
+    echo "Start time is: $( date +%r )"
 
-set q="CREATE EXTENSION postgis;"
-psql -h %pg_host% -U %pg_user% -d %db_name% -c %q%
+    ospn=2913
 
-goto:eof
+    # this array contains entries that are the shapefile path and the
+    # name of the table comma separated
+    shapefiles=(
+        "${CITY}",'city'                "${ISOCHRONES}",''
+        "${MAX_STOPS}",''               "${MULTIFAMILY}",'multifamily'
+        "${ORCA}",''                    "${TAXLOTS}",''
+        "${TM_DISTRICT}",'tm_district'  "${UGB}",''
+    )
 
+    for shp_info in "${shapefiles[@]}"; do
+        # split the items at the comma and assign to separate variables
+        IFS=',' read shp_path tbl_name <<< "${shp_info}"
 
-:loadShapefiles
-::Load all shapefiles that will be used in the postgis analysis portion of the project
-::using shp2pgsql
-echo "2) Loading shapefiles into Postgres..."
-echo "Start time is: %time:~0,8%"
+        # if a table name is not provided use the name of the shapefile
+        if [[ -z "${tbl_name}" ]]; then
+            tbl_name=$( basename "${shp_path}" .shp )
+        fi
 
-::Set function variables
-set trimet_path=G:\TRIMET
-set rlis_path=G:\Rlis
-set srid=2913
+        shp2pgsql -d -s "${ospn}" -D -I "${shp_path}" "${tbl_name}" \
+            | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
+    done
+}
 
-::Loading large, complex shapefiles like taxlots and multi-family housing can be time consuming,
-::however using the -D parameter of can *greatly* improve performance, see link for details
-::http://gis.stackexchange.com/questions/109564/what-is-the-best-hack-for-importing-large-datasets-into-postgis?utm_content=buffer6bdf0&utm_medium=social&utm_source=twitter.com&utm_campaign=buffer
-::The 'q' parameter on psql makes command line output less verbose
+add_year_built_values() {
+    # Some additional year built data was provided by Washington county
+    # for tax lots that have no data for that attribute in rlis
+    echo '3) Adding yearbuilt values, where missing, '
+    echo 'from supplementary data from Washington County'
 
-::max stops 
-shp2pgsql -d -s %srid% -D -I %data_workspace%\max_stops.shp max_stops ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    id_col='ms_imp_seg'
+    year_col='yr_built'
+    year_tbl='wash_co_missing_years'
+    year_csv="${CODE_DIR}/taxlot_data/wash_co_missing_years.csv"
 
-::walkshed polygons (isochrones)
-shp2pgsql -d -s %srid% -D -I %data_workspace%\max_stop_isochrones.shp isochrones ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    drop_cmd="DROP TABLE IF EXISTS ${year_tbl} CASCADE;"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${drop_cmd}"
 
-::taxlots
-shp2pgsql -d -s %srid% -D -I %rlis_path%\TAXLOTS\taxlots.shp taxlots ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    create_cmd="CREATE TABLE ${year_tbl} \
+               (${id_col} text, ${year_col} int) WITH OIDS;"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${create_cmd}"
 
-::multi-family housing
-shp2pgsql -d -s %srid% -D -I %rlis_path%\LAND\multifamily_housing_inventory.shp multifamily ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    echo "\copy ${year_tbl} FROM ${year_csv} CSV HEADER" \
+        | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
 
-::outdoor recreation and conservations areas (orca)
-shp2pgsql -d -s %srid% -D -I %rlis_path%\LAND\orca.shp orca ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    rno2tlid_tbl='rno2tlid'
+    rno2tlid_dbf="${CODE_DIR}/taxlot_data/wash_missing_years_rno2tlid.dbf"
 
-::trimet service district boundary
-shp2pgsql -d -s %srid% -D -I %trimet_path%\tm_fill.shp tm_district ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    shp2pgsql -d -n -D "${rno2tlid_dbf}" "${rno2tlid_tbl}" \
+        | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
 
-::city boundaries
-shp2pgsql -d -s %srid% -D -I %rlis_path%\BOUNDARY\cty_fill.shp city ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    # Add the missing years to the rlis tax lot data when the year is
+    # greater than what is in rlis 
+    add_years_sql="${POSTGIS_DIR}/add_missing_yearbuilt.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
+         -v yr_tbl="${year_tbl}" -v r2t_tbl="${rno2tlid_tbl}" \
+         -v id_col="${id_col}" -v yr_col="${year_col}" \
+         -f "${add_years_sql}"
+}
 
-::urban growth boundary
-shp2pgsql -d -s %srid% -D -I %rlis_path%\BOUNDARY\ugb.shp ugb ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+geoprocess_properties() {
+    echo '4) Running geoprocessing sql scripts'
+    echo "Start time is: $( date +%r )"
 
-goto:eof
+    # Filter out properties that are parks, natural areas, cemeteries
+    # and golf courses
+    filter_sql="${POSTGIS_DIR}/remove_natural_areas.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${filter_sql}"
 
+    echo 'natural areas removed, geoprocessing step two beginning...'
 
-:addYearbuiltValues
-::Some additional year built data was provided by washington county for tax lots that
-::have no data for that attribute in RLIS, this function adds that data to the rlis
-::taxlots that are used for this analysis
-echo "3) Adding yearbuilt values, where missing, "
-echo "from supplementary data from Washington County"
+    # Add project attributes to properties based on spatial relationships
+    geoprocess_sql="${POSTGIS_DIR}/geoprocess_properties.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${geoprocess_sql}"
 
-set id_column=ms_imp_seg
-set year_column=yr_built
-set year_table=wash_co_missing_years
-set r2t_table=rno2tlid
+}
 
-set year_csv=%git_workspace%\taxlot_data\wash_co_missing_years.csv
-set r2t_dbf=%git_workspace%\taxlot_data\wash_missing_years_rno2tlid.dbf
+generate_stats() {
+    # Execute sql script that compiles project stats and generates
+    # final export tables
+    echo '5) Compiling final stats...'
 
-::Drop table that holds washington county missing yearbuilt values if it exists
-set drop_command="DROP TABLE IF EXISTS %year_table% CASCADE;"
-psql -h %pg_host% -d %db_name% -U %pg_user% -c %drop_command%
+    stats_sql="${POSTGIS_DIR}/compile_property_stats.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${stats_sql}"
+}
 
-::Create table to hold washington county missing year built data
-set create_command="CREATE TABLE %year_table% (%id_column% text, %year_column% int) WITH OIDS;"
-psql -h %pg_host% -d %db_name% -U %pg_user% -c %create_command%
+export_to_csv() {
+    # Write final output tables to csv
+    echo '6) Exporting stats to csv...'
 
-::Populate washington county missing yearbuilt table with data from csv
-echo \copy %year_table% from %year_csv% csv header ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    mkdir -p "${CSV_DIR}"
 
-::Load the dbf that has a mapping of account numbers (rno) to tax lot id's (tlid) 
-shp2pgsql -d -n -D %r2t_dbf% %r2t_table% ^
-	| psql -q -h %pg_host% -U %pg_user% -d %db_name%
+    stats_tbls=( 'pres_stats_w_near_max' 'pres_stats_minus_near_max' )
+    for tbl in "${stats_tbls[@]}"; do
+        echo "\copy ${tbl} TO ${CSV_DIR}/${tbl}.csv CSV HEADER" \
+            | psql -h "${HOST}" -d "${DBNAME}" -U "${USER}"
+    done
+}
 
-::Add the missing years to the rlis taxlot data when the year is greater than what is in
-::rlis (entries will have a value of 0 when there is no data)
-set add_years_script=%git_workspace%\postgis\add_missing_yearbuilt.sql
-psql -h %pg_host% -d %db_name% -U %pg_user% -v yr_tbl=%year_table% -v r2t_tbl=%r2t_table% ^
-	-v id_col=%id_column% -v yr_col=%year_column% -f %add_years_script%
+main() {
+#    create_postgis_db
+    load_shapefiles
+#    add_year_built_values
+#    geoprocess_properties
+#    generate_stats
+#    export_to_csv
+}
 
-goto:eof
-
-
-:geoprocessProperties
-::Run sql scripts that 
-echo "4) Running geoprocessing sql scripts"
-echo "Start time is: %time:~0,8%"
-
-::Filter out properties that are parks, natural areas, cemeteries & golf courses
-set filter_script=%git_workspace%\postgis\remove_natural_areas.sql
-psql -h %pg_host% -d %db_name% -U %pg_user% -f %filter_script%
-
-echo "phase 4.1 complete, onto 4.2..."
-
-::Add project attributes to properties based on spatial relationships
-set geoprocess_script=%git_workspace%\postgis\geoprocess_properties.sql
-psql -h %pg_host% -d %db_name% -U %pg_user% -f %geoprocess_script%
-
-goto:eof
-
-
-:generateStats
-::Execute sql script that compiles project stats and generates final export tables
-echo "5) Compiling final stats..."
-
-set stats_script=%git_workspace%\postgis\compile_property_stats.sql
-psql -h %pg_host% -d %db_name% -U %pg_user% -f %stats_script%
-
-goto:eof
-
-
-:exportToCsv
-::Write final output tables to csv
-echo "6) Exporting stats to csv..."
-
-::Create a folder to store the output
-set csv_workspace=%data_workspace%\csv
-if not exist %csv_workspace% mkdir %csv_workspace%
-
-::Pipe the export command to psql as the variables below can't be expanded after one enters psql 
-set stats_table1=pres_stats_w_near_max
-echo \copy %stats_table1% to '%csv_workspace%\%stats_table1%.csv' csv header ^
-	| psql -h %pg_host% -d %db_name% -U %pg_user%
-
-set stats_table2=pres_stats_minus_near_max
-echo \copy %stats_table2% to '%csv_workspace%\%stats_table2%.csv' csv header ^
-	| psql -h %pg_host% -d %db_name% -U %pg_user%
-
-goto:eof
+main
