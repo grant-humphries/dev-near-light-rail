@@ -149,12 +149,12 @@ export_to_csv() {
 }
 
 main() {
-#    create_postgis_db
+    create_postgis_db
     load_shapefiles
-#    add_year_built_values
-#    geoprocess_properties
-#    generate_stats
-#    export_to_csv
+    add_year_built_values
+    geoprocess_properties
+    generate_stats
+    export_to_csv
 }
 
 main
