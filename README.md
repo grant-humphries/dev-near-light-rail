@@ -1,29 +1,32 @@
-***README is currently underconstruction and not up-todate***
+***README is currently under construction and fully not up-to-date***
 
 ## Overview
-
-This repo contains scripts that automate the process of finding taxlots within network walking distance of light rail stops, determining the value of development that has occurred since those stops have been built, and comparing that growth to other areas in the Portland metro region.  Part of this process is a network analysis that determines which tax lots can reach each stop using the street and trail network within a given walking distance (usually half of  mile).  This routing is done with ArcGIS's Network Analyst (at this time, although I'm considering migrating this to PostGreSQL's pg_routing extension) and the routable network that is used for this analysis is derived from OpenStreetMap via Osmosis and PostGIS.  The primary output of this project is a set of statistics that describe the total value of properties that are within a walking threshold of MAX stops and that have been developed since it was confirmed that the nearby MAX stop would be built.  The parcel data used here is every tax lot for Multnomah, Washington and Clackamas counties, which is ~600,000 fairly complex polygons.  Thus developing efficient geoprocessing operations on these was one of the biggest challenges of this work.  A number of spatial datasets are a by-product of this analysis and those have been used in a variety of map products in order to visualize the analysis.
+This repo contains scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the light rail lines, to which the stops belong to, became public knowledge, and comparing that growth to other areas in the Portland metro region.  Part of this process is a network analysis that determines which tax lots can reach each stop using the street and trail network and a supplied walking distance (one half mile by default).  The routing is done with `ArcGIS Network Analyst` and the routable network is derived from `OpenStreetMap`.   The remaining geoprocessing, which determines the comparison areas ais done with open source tools which include the python libraries `fiona`, `shapely`, and `pyproj` and sql scripts that utilzie `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
 
 ## Project Workflow
-
 Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
 
+### Development Environment
+The following applications/tools must be installed to execute the scripts in this repo
+* python 2.7.x
+* PostgreSQL with PostGIS extension
+* bash 3.0+
+
+The first two items are fairly easy to install on all major platforms (a google search including the name of you operating system should get you what you need).  With respect to bash, this is in place by default on Linux and Mac and I recomment MinGW
+
+#### python package management
+python package dependencies are retrieved with `buildout` however some of the GIS packages that rely on C libraries will not be installable with buildout on Windows (and even potentially on Mac or Linux)
+
 ### Update MAX Stop Data
-
 It's good practice to update this data each time this project is refreshed to ensure any changes to the MAX network are captured
-
-1. Run the batch file stored here: `bin/update_max_stops.bat` to create a shapefile that has all of the MAX stops that are currently in operation.
-
-This script runs a query on the HAWAII database, writes the output to csv then converts the csv to shapefile.  It ultizes the stops identified in the landmark table to avoid missing any stops that are temporarily closed
+`./bin/get_permanent_max_stops`
 
 ### Create Updated Streets and Trails Shapefile from OpenStreetMap Data
-
-1. Run the batch file stored here `bin/osm2routable_shp.bat`.
+`bin/osm2routable_shp`
 
 This script grabs current OSM data, imports it into PostGIS using Osmosis, rebuilds the streets and trails network in a database table, then exports to shapefile.
 
 ### Create Network Dataset with ArcGIS's Network Analyst
-
 As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have a single shell script that runs this entire process and this is one of my only remaining hurdles
 
 1. In ArcMap right-click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
