@@ -1,18 +1,18 @@
 ***README is currently under construction and fully not up-to-date***
 
 ## Overview
-This repo contains scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the light rail lines, to which the stops belong to, became public knowledge, and comparing that growth to other areas in the Portland metro region.  Part of this process is a network analysis that determines which tax lots can reach each stop using the street and trail network and a supplied walking distance (one half mile by default).  The routing is done with `ArcGIS Network Analyst` and the routable network is derived from `OpenStreetMap`.   The remaining geoprocessing, which determines the comparison areas ais done with open source tools which include the python libraries `fiona`, `shapely`, and `pyproj` and sql scripts that utilzie `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
+This repo contains scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool execute routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figure for the comparison areas is done with open source tools which include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
 
 ## Project Workflow
 Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
 
 ### Development Environment
 The following applications/tools must be installed to execute the scripts in this repo
-* python 2.7.x
+* Python 2.7.x
 * PostgreSQL with PostGIS extension
-* bash 3.0+
+* Bash 3.0+
 
-The first two items are fairly easy to install on all major platforms (a google search including the name of you operating system should get you what you need).  With respect to bash, this is in place by default on Linux and Mac and I recomment MinGW
+The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac and I recommend MinGW 
 
 #### python package management
 python package dependencies are retrieved with `buildout` however some of the GIS packages that rely on C libraries will not be installable with buildout on Windows (and even potentially on Mac or Linux)
