@@ -5,6 +5,7 @@
 # the code directory is two levels up from this script
 CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
 POSTGIS_DIR="${CODE_DIR}/postgisql"
+YR_BUILT_DIR="${CODE_DIR}/year_built_data"
 PROJECT_DIR='/g/PUBLIC/GIS_Projects/Development_Around_Lightrail'
 TRIMET_DIR='/g/TRIMET'
 RLIS_DIR='/g/Rlis'
@@ -81,31 +82,31 @@ add_year_built_values() {
 
     id_col='ms_imp_seg'
     year_col='yr_built'
-    year_tbl='wash_co_missing_years'
-    year_csv="${CODE_DIR}/taxlot_data/wash_co_missing_years.csv"
+    year_tbl='wash_co_year_built'
+    year_csv="${YR_BUILT_DIR}/wash_co_year_built.csv"
 
     drop_cmd="DROP TABLE IF EXISTS ${year_tbl} CASCADE;"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${drop_cmd}"
 
     create_cmd="CREATE TABLE ${year_tbl} \
-               (${id_col} text, ${year_col} int) WITH OIDS;"
+               (${id_col} text PRIMARY KEY, ${year_col} int);"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${create_cmd}"
 
-    echo "\copy ${year_tbl} FROM ${year_csv} CSV HEADER" \
-        | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
+    csv_cmd="\copy ${year_tbl} FROM ${year_csv} CSV HEADER;" \
+    psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}" -c "${csv_cmd}"
 
     rno2tlid_tbl='rno2tlid'
-    rno2tlid_dbf="${CODE_DIR}/taxlot_data/wash_missing_years_rno2tlid.dbf"
+    rno2tlid_dbf="${YR_BUILT_DIR}/wash_co_rno2tlid.dbf"
 
     shp2pgsql -d -n -D "${rno2tlid_dbf}" "${rno2tlid_tbl}" \
         | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
 
     # Add the missing years to the rlis tax lot data when the year is
     # greater than what is in rlis 
-    add_years_sql="${POSTGIS_DIR}/add_missing_yearbuilt.sql"
+    add_years_sql="${POSTGIS_DIR}/add_missing_year_built.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
-         -v yr_tbl="${year_tbl}" -v r2t_tbl="${rno2tlid_tbl}" \
-         -v id_col="${id_col}" -v yr_col="${year_col}" \
+         -v wash_co_year="${year_tbl}" -v rno2tlid="${rno2tlid_tbl}" \
+         -v id_col="${id_col}" -v year_col="${year_col}" \
          -f "${add_years_sql}"
 }
 

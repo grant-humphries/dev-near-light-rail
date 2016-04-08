@@ -15,10 +15,10 @@ setup(
     },
     install_requires=[
         # arcpy is a requirement as well, but arcpy is terrible for real
-        # python development so buildout can't find it
+        # python development so buildout can't find it even when installed
         # 'arcpy',
         'fiona>=1.6.2',
-        'overpass>=0.1.0',
+        'overpass>=0.4.0',
         'pyproj>=1.9.4',
         'shapely>=1.3',
         'sqlalchemy>=1.0.9',

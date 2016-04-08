@@ -9,7 +9,7 @@ Follow the steps below to refresh the data and generate a current version of the
 ### Development Environment
 The following applications/tools must be installed to execute the scripts in this repo
 * Python 2.7.x
-* PostgreSQL with PostGIS extension
+* PostgreSQL with PostGIS 2.0+
 * Bash 3.0+
 
 The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac and I recommend MinGW 
