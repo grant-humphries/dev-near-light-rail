@@ -1,12 +1,11 @@
---Washington County has provided developemnt year data (year built) for
+--Washington County has provided development year data (year built) for
 --tax lots that is either out of data or does not exist in RLIS, this
---script add that information to RLIS tax lots
+--script adds that information to RLIS tax lots
 
 --Create column that contains only alpha-numeric characters at the
 --beginning of id column, this value matches 'rno' in the 'taxlots'
 --table
-alter table :wash_co_year drop column if exists rno cascade;
-alter table :wash_co_year add rno text;
+alter table :wash_co_year add rno text unique;
 update :wash_co_year set rno = substring(:id_col, '^\w+');
 
 --Group by rno to have a single entry for each taxlot, the most recent
@@ -32,8 +31,8 @@ vacuum analyze max_year;
 
 --Testing verifies that either an 'rno' or 'tlid' join between the
 --these two tables produces a valid match
-update taxlots as t 
+update developed_taxlots as dt
     set yearbuilt = mx.yearbuilt
     from max_year mx
-    where (t.tlid = mx.tlid or t.rno = mx.rno)
-        and t.yearbuilt < mx.yearbuilt;
+    where (dt.tlid = mx.tlid or dt.rno = mx.rno)
+        and dt.yearbuilt < mx.yearbuilt;

@@ -31,7 +31,7 @@ insert into unique_taxlots
     select 
         gid, geom, totalval, gis_acres, yearbuilt, min(max_year), null, 
         near_max, min(walk_dist), tm_dist, ugb, nine_cities
-    from analysis_taxlots
+    from max_taxlots
     group by 
         gid, geom, totalval, gis_acres, yearbuilt, near_max, tm_dist, ugb, 
         nine_cities;
@@ -54,7 +54,7 @@ insert into unique_multifam
     select
         gid, geom, units, yearbuilt, min(max_year), null, near_max, tm_dist,
         ugb, nine_cities
-    from analysis_multifam
+    from max_multifam
     group by gid, geom, units, yearbuilt, near_max, tm_dist, ugb, nine_cities;
 
 
@@ -67,34 +67,29 @@ create table property_stats (
     totalval numeric,
     housing_units int,
     gis_acres numeric,
-    --these fields are for ordering the rows in the final stats table
     group_rank int,
     zone_rank int
 );
 
 
 --This function will generate the stats needed for this analysis from
---the taxlot- and multi-fam-
---analysis tables.  Each time the function is called it adds one or more entries to the property_stats
---table the contents of those entries are dictated by the function parameters
-create or replace function insert_property_stats(subset text, group_method text, includes_max boolean) 
-    returns void as $$
+--the taxlot- and multi-fam- analysis tables.  Each time the function
+--is called it adds one or more entries to the property_stats table the
+--contents of those entries are dictated by the function parameters
+create or replace function insert_property_stats(
+    subset text, group_method text, includes_max boolean) returns void as $$
 declare
-    --These varaibles will be assigned values based on the function parameters
     group_desc text;
     grouping_field text;
     taxlot_table text;
     multifam_table text;
-    
-    --These variables may or may not be assigned values (other than empty string/zero) based
-    --on the function parameters
+
     zone_clause text := '';
     not_near_max_clause text := '';
     group_rank text := '0';
     zone_rank text := '0';
+
 begin
-    --the subset parameter defines portion of the properties that are being described 
-    --the current entr(ies)
     if subset = 'near_max' then
         group_desc := 'Properties in MAX Walkshed';
         group_rank := '1';
@@ -105,8 +100,8 @@ begin
     elsif subset = 'nine_cities' then
         group_desc := 'Nine Biggest Cities in TM District';
     else
-        raise notice 'invalid input for ''subset'' parameter,';
-        raise notice 'enter ''near_max'', ''ugb'', ''tm_dist'', or ''nine_cities''.';
+        raise notice 'invalid input for ''subset'' parameter, enter';
+        raise notice '''near_max'', ''ugb'', ''tm_dist'', or ''nine_cities''.';
     end if;
 
     --group_method determines whether a set of entries will be created for each max zone
@@ -115,8 +110,8 @@ begin
     --counted in each, but the former type of entry eliminates as duplicates
     if group_method = 'by_zone' then
         grouping_field := 'max_zone';
-        taxlot_table := 'analysis_taxlots ';
-        multifam_table := 'analysis_multifam ';
+        taxlot_table := 'max_taxlots ';
+        multifam_table := 'max_multifam ';
         zone_clause := 'AND max_zone = tx1.max_zone ';
     elsif group_method = 'by_subset' then
         grouping_field := subset;

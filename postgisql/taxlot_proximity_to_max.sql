@@ -1,10 +1,17 @@
---
+--This script tabulates which tax lots fall within the supplied
+--isochrones and if a tax lot does not fall within an isochrone finds
+--the nearest max stop to that tax lot.  These calculations are the
+--basis for assigning a 'max group' to each tax lot.  The script also
+--checks asto whether each property is in or outside of the urban
+--growth boundary, the trimet district and the city limits of the nine
+--largest cities in the portland metro area.  It does all this for
+--multi-family housing units as well
 
 
 --1) Taxlots
 
-drop table if exists analysis_taxlots cascade;
-create table analysis_taxlots (
+drop table if exists max_taxlots cascade;
+create table max_taxlots (
     id serial primary key,
     gid int references taxlots, 
     geom geometry,
@@ -27,7 +34,7 @@ create table analysis_taxlots (
 --will exist in this table if a taxlot is within walking distance multiple 
 --stops that are in different 'max zones', but duplicates of a properties 
 --within the same MAX Zone are eliminated
-insert into analysis_taxlots (
+insert into max_taxlots (
         gid, geom, tlid, totalval, gis_acres, prop_code, landuse, yearbuilt,
         max_year, max_zone, near_max, walk_dist)
     select
@@ -56,18 +63,18 @@ create temp table tl_nearest_stop with oids as
 alter table tl_nearest_stop add primary key (gid);
 vacuum analyze tl_nearest_stop;
 
---get unique id's of taxlots inserted to this point
-drop table if exists max_taxlots cascade;
-create temp table max_taxlots as
+--get unique id's of taxlots that are within an ischron
+drop table if exists isochrone_taxlots cascade;
+create temp table isochrone_taxlots as
     select distinct gid
-    from analysis_taxlots;
+    from max_taxlots;
 
-alter table max_taxlots add primary key (gid);
-vacuum analyze max_taxlots;
+alter table isochrone_taxlots add primary key (gid);
+vacuum analyze isochrone_taxlots;
 
 --Insert taxlots that are not within walking distance of max stops into
---analysis_taxlots 
-insert into analysis_taxlots (
+--max_taxlots 
+insert into max_taxlots (
         gid, geom, tlid, totalval, gis_acres, prop_code, landuse, yearbuilt,
         max_year, max_zone, near_max)
     select 
@@ -77,12 +84,11 @@ insert into analysis_taxlots (
     from developed_taxlots dt, tl_nearest_stop ns
     where dt.gid = ns.gid
         and not exists (
-            select null from max_taxlots
+            select null from isochrone_taxlots
             where gid = dt.gid);
 
-create index a_taxlot_gix on analysis_taxlots using GIST (geom);
-cluster analysis_taxlots using a_taxlot_gix;
-vacuum analyze analysis_taxlots;
+create index max_taxlot_gix on max_taxlots using GIST (geom);
+vacuum analyze max_taxlots;
 
 --Get nine largest portland metro city limits as a single geometry
 drop table if exists nine_cities cascade;
@@ -99,15 +105,15 @@ vacuum analyze nine_cities;
 
 --Determine if taxlots are within trimet district, urban growth boundary,
 --and nine largest portland metro city limits
-update analysis_taxlots as atx set
+update max_taxlots as mt set
     ugb = (
-        select ST_Intersects(ugb.geom, atx.geom)
+        select ST_Intersects(ugb.geom, mt.geom)
         from ugb),
     tm_dist = (
-        select ST_Intersects(td.geom, atx.geom)
+        select ST_Intersects(td.geom, mt.geom)
         from tm_district td),
     nine_cities = (
-        select ST_Intersects(nc.geom, atx.geom)
+        select ST_Intersects(nc.geom, mt.geom)
         from nine_cities nc);
 
 
@@ -117,12 +123,12 @@ update analysis_taxlots as atx set
  --as their property type is known
 
 --Divisors for overall area comparisons will still come from 
---'analysis_taxlots', but numerators will come from the table below 
+--'max_taxlots', but numerators will come from the table below 
 --because the multi-family layer doesn't have full coverage of all 
 --buildable land in the region
 
-drop table if exists analysis_multifam cascade;
-create table analysis_multifam (
+drop table if exists max_multifam cascade;
+create table max_multifam (
     id serial primary key,
     gid int references multifamily, 
     geom geometry,
@@ -144,7 +150,7 @@ create table analysis_multifam (
 --the area for multifamily is given in square feet, this is converted
 --to acres (43,560 sqft in 1 acre) and stored in 'gis_acres' to be
 --congruent with values in the taxlot tables
-insert into analysis_multifam (
+insert into max_multifam (
         gid, geom, metro_id, units, unit_type, gis_acres, mixed_use, 
         yearbuilt, max_year, max_zone, near_max, walk_dist)
     select 
@@ -168,15 +174,15 @@ create temp table mf_nearest_stop as
 alter table mf_nearest_stop add primary key (gid);
 vacuum analyze mf_nearest_stop;
 
-drop table if exists max_multifam cascade;
-create table max_multifam as
+drop table if exists isochrone_multifam cascade;
+create table isochrone_multifam as
     select distinct gid
-    from analysis_multifam;
+    from max_multifam;
     
-alter table max_multifam add primary key (gid);
-vacuum analyze max_multifam;
+alter table isochrone_multifam add primary key (gid);
+vacuum analyze isochrone_multifam;
 
-insert into analysis_multifam (
+insert into max_multifam (
         gid, geom, metro_id, units, unit_type, gis_acres, mixed_use, 
         yearbuilt, max_year, max_zone, near_max)
     select 
@@ -186,22 +192,21 @@ insert into analysis_multifam (
     from multifamily mf, mf_nearest_stop ns
     where mf.gid = ns.gid
         and not exists (
-            select null from max_multifam
+            select null from isochrone_multifam
             where gid = mf.gid);
 
-create index a_multifam_gix on analysis_multifam using GIST (geom);
-cluster analysis_multifam using a_multifam_gix;
-vacuum analyze analysis_multifam;
+create index max_multifam_gix on max_multifam using GIST (geom);
+vacuum analyze max_multifam;
 
-update analysis_multifam as amf set
+update max_multifam as mm set
     ugb = (
-        select ST_Intersects(ugb.geom, amf.geom)
+        select ST_Intersects(ugb.geom, mm.geom)
         from ugb),
     tm_dist = (
-        select ST_Intersects(td.geom, amf.geom)
+        select ST_Intersects(td.geom, mm.geom)
         from tm_district td),
     nine_cities = (
-        select ST_Intersects(nc.geom, amf.geom)
+        select ST_Intersects(nc.geom, mm.geom)
         from nine_cities nc);
 
 --ran in ~4,702 seconds on 5/20/14 (definitely benefitted from some

@@ -74,10 +74,20 @@ load_shapefiles() {
     done
 }
 
+remove_natural_areas() {
+    # Filter out properties that are parks, natural areas, cemeteries
+    # and golf courses as well those that are street right-of-way or
+    # parts of water bodies
+    echo '3) removing natural areas, ROW from tax lots'
+
+    filter_sql="${POSTGIS_DIR}/remove_natural_areas.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${filter_sql}"
+}
+
 add_year_built_values() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
-    echo '3) Adding yearbuilt values, where missing, '
+    echo '4) Adding yearbuilt values, where missing, '
     echo 'from supplementary data from Washington County'
 
     id_col='ms_imp_seg'
@@ -95,6 +105,7 @@ add_year_built_values() {
     csv_cmd="\copy ${year_tbl} FROM ${year_csv} CSV HEADER;" \
     psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}" -c "${csv_cmd}"
 
+
     rno2tlid_tbl='rno2tlid'
     rno2tlid_dbf="${YR_BUILT_DIR}/wash_co_rno2tlid.dbf"
 
@@ -110,27 +121,19 @@ add_year_built_values() {
          -f "${add_years_sql}"
 }
 
-geoprocess_properties() {
-    echo '4) Running geoprocessing sql scripts'
-    echo "Start time is: $( date +%r )"
+get_taxlot_max_proximity() {
+    echo '5) Determining spatial relationships between tax lots and max stops,'
+    echo "ugb, trimet district and cities.  Start time is: $( date +%r )"
 
-    # Filter out properties that are parks, natural areas, cemeteries
-    # and golf courses
-    filter_sql="${POSTGIS_DIR}/remove_natural_areas.sql"
-    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${filter_sql}"
-
-    echo 'natural areas removed, geoprocessing step two beginning...'
-
-    # Add project attributes to properties based on spatial relationships
+    # Add proximity attributes to properties based on spatial relationships
     geoprocess_sql="${POSTGIS_DIR}/geoprocess_properties.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${geoprocess_sql}"
-
 }
 
 generate_stats() {
     # Execute sql script that compiles project stats and generates
     # final export tables
-    echo '5) Compiling final stats...'
+    echo '6) Compiling final stats...'
 
     stats_sql="${POSTGIS_DIR}/compile_property_stats.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${stats_sql}"
@@ -138,7 +141,7 @@ generate_stats() {
 
 export_to_csv() {
     # Write final output tables to csv
-    echo '6) Exporting stats to csv...'
+    echo '7) Exporting stats to csv...'
 
     mkdir -p "${CSV_DIR}"
 
@@ -152,8 +155,9 @@ export_to_csv() {
 main() {
     create_postgis_db
     load_shapefiles
+    remove_natural_areas
     add_year_built_values
-    geoprocess_properties
+    get_taxlot_max_proximity
     generate_stats
     export_to_csv
 }
