@@ -1,30 +1,29 @@
 ***README is currently under construction and fully not up-to-date***
 
 ## Overview
-This repo contains scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool execute routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figure for the comparison areas is done with open source tools which include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
+This project is comprised of scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool executes routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figures for the comparison areas is done with open source tools that include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
 
 ## Project Workflow
 Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
 
 ### Development Environment
-The following applications/tools must be installed to execute the scripts in this repo
+The following languages/applications must be installed to execute the scripts in this repo:
 * Python 2.7.x
 * PostgreSQL with PostGIS 2.0+
 * Bash 3.0+
 
-The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac and I recommend MinGW 
+The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac, and I recommend using [MinGW](http://www.mingw.org/) to get this functionality on Windows.
 
 #### python package management
-python package dependencies are retrieved with `buildout` however some of the GIS packages that rely on C libraries will not be installable with buildout on Windows (and even potentially on Mac or Linux)
+Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( `fiona`, `gdal`, `pyproj`, `shapely`) and will not install with buildout on Windows (and potentially on Mac or Linux as well).  To install these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/).  Alternately the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html) is available on all major platforms and can be used to install these as well.  Finally, `arcpy` is a requirement of the script that generates the isochrones.  To get this package you need an ArcGIS Desktop license and the code also draws on the Network Analyst extension.
+
+With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to install buildout of a project specific instance of python that will be created and then run `./bin/buildout` to fetch the remaining python packages.
 
 ### Update MAX Stop Data
-It's good practice to update this data each time this project is refreshed to ensure any changes to the MAX network are captured
-`./bin/get_permanent_max_stops`
+buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: `./bin/get_permanent_max_stops`.  To see the option available on the script use `./bin/buildout --help`
 
-### Create Updated Streets and Trails Shapefile from OpenStreetMap Data
-`bin/osm2routable_shp`
-
-This script grabs current OSM data, imports it into PostGIS using Osmosis, rebuilds the streets and trails network in a database table, then exports to shapefile.
+### Get Routable Street and Trail Shapefile via OpenStreetMap
+Again as script has been created that carries out this task.  To deploy enter: `./bin/osm2routable_shp`.  See options by appending the  `--help` parameter.
 
 ### Create Network Dataset with ArcGIS's Network Analyst
 As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have a single shell script that runs this entire process and this is one of my only remaining hurdles
