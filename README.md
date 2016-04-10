@@ -6,7 +6,7 @@ This project is comprised of scripts that automate the process of finding tax lo
 ## Project Workflow
 Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
 
-### Development Environment
+#### Development Environment
 The following languages/applications must be installed to execute the scripts in this repo:
 * Python 2.7.x
 * PostgreSQL with PostGIS 2.0+
@@ -14,18 +14,29 @@ The following languages/applications must be installed to execute the scripts in
 
 The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac, and I recommend using [MinGW](http://www.mingw.org/) to get this functionality on Windows.
 
-#### python package management
+##### python package management
 Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( `fiona`, `gdal`, `pyproj`, `shapely`) and will not install with buildout on Windows (nor potentially on Mac or Linux).  To install these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/).  Alternately the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html) is available on all major platforms and can be used to install these as well.  Finally, `arcpy` is a requirement of the script that generates the isochrones.  To get this package you need an ArcGIS Desktop license and the code also draws on the Network Analyst extension.
 
 With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to create project specific instance of python that includes buildout then run `./bin/buildout` to fetch the remaining python packages.
 
-### Update MAX Stop Data
-buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: `./bin/get_permanent_max_stops -d 'dbname' -u 'username' -p 'password' `.  To see the options available for the script use `./bin/buildout --help`
+#### Update MAX Stop Data
+buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: 
+```sh
+./bin/get_permanent_max_stops -d 'dbname' -u 'username' -p 'password'
+```  
+To see the options available for the script use 
+```
+./bin/buildout --help
+```
 
-### Get Routable Street and Trail Shapefile via OpenStreetMap
-Again a script has been created that carries out this task.  To deploy enter: `./bin/osm2routable_shp`.  See options by appending the  `--help` parameter.
+#### Get Routable Street and Trail Shapefile via OpenStreetMap
+Again a script has been created that carries out this task.  To deploy enter:
+```sh
+./bin/osm2routable_shp
+```  
+See options by appending the  `--help` parameter.
 
-### Create Network Dataset with ArcGIS's Network Analyst
+#### Create Network Dataset with ArcGIS's Network Analyst
 As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
 * Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
@@ -112,7 +123,7 @@ walkMinutes(!Shape!)
 
 Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
 
-### Generate Walkshed Isochrones
+#### Generate Walkshed Isochrones
 
 This step creates walkshed polygons (a.k.a. isochrones) that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
 
@@ -121,7 +132,7 @@ This step creates walkshed polygons (a.k.a. isochrones) that encapsulate the are
 3. Run `create_isochrones.py` in the python window within ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former method (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution).  This is not ideal because when using the windows shell you can prompt users to give input (such as the name of the project folder), so I hope to be able to be able to find a way move away from the present method.  The script executed in a little under 10 minutes as of 02/2014.
 4. Once the isochrones shapefile has been created bring it into a desktop GIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network to check for errors there.
 
-### Geoprocess Property Data and Generate Final Stats
+#### Geoprocess Property Data and Generate Final Stats
 
 Here the tax lot dataset is processed such that properties that are at least 80% covered by parks, natural areas, cemeteries or golf courses are removed from consideration for inclusion in the total value of development.  This step is not executed for the multifamily layer as it is implicit that they aren't covered by these landuses.  Then using the isochrones, properties that were built since the decision to build nearby MAX stations are selected and stats are generated that compare growth in those areas to other urbanized regions in the Portland metropolitan area.
 
