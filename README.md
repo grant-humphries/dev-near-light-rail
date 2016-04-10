@@ -77,12 +77,11 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
 
 
 * Repeat the previous two steps of for the 'To-From' row in the 'Evaluators' dialog
-
-`Name`: 'walk_minutes'
-`Type`: Cost
-`Units`: leave as 'Unknown', see below for details
-`Data Type`: Double
-`Use by Default`: False (unchecked)
+	* `Name`: 'walk_minutes'
+	* `Type`: Cost
+	* `Units`: leave as 'Unknown', see below for details
+	* `Data Type`: Double
+	* `Use by Default`: False (unchecked)
 
 
 length is assumed to be in feet and walk speed is 3 miles per hour in this case
