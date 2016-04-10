@@ -29,15 +29,15 @@ Again a script has been created that carries out this task.  To deploy enter: `.
 As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
 * Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
-* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/yyyy_mm/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 * Use the default name for the file
 * Keep default of modeling turns
 * Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
 * Leave elevation modeling as 'None'
 * Delete the default network attributes with the 'Remove All' button
 * Click 'Add...' button to create a new network attribute
-* On the 'Add New Attribute' dialog enter the following, then click 'OK':
-	* `Name`: 'foot_permission' (**This attribute must have this exact name or the python script that generates the isochrones won't be able to find it**)
+* On the 'Add New Attribute' dialog enter the following, then click 'OK' (**note that the 'Name' attribute must have the exact name defined below or the python script that generates the isochrones won't be able to find it**):
+	* `Name`: 'foot_permission'
 	* `Usage Type`: Restriction
 	* `Restriction Usage`: Prohibited
 	* `Use by Default`: True (checked)
@@ -62,8 +62,7 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
     ```
     foot_permissions(!foot!, !access!, !highway!, !indoor!)
     ```
-
-
+*
     
 
 EVALUATORS (click Evaluators button to access these settings): there will be two items used in
