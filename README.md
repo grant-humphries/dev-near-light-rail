@@ -26,7 +26,7 @@ buildout has generated a script that will fetch the appropriate stops for this a
 ```  
 To see the options available for the script use 
 ```
-./bin/buildout --help
+./bin/get_permanent_max_stops --help
 ```
 
 #### Get Routable Street and Trail Shapefile via OpenStreetMap
