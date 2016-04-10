@@ -36,15 +36,15 @@ See options by appending the  `--help` parameter.
 #### Create Network Dataset with ArcGIS's Network Analyst
 As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
-* Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
+* Open ArcMap and make sure that the Network Analyst Extension is enabled (accessible under 'Customize' --> 'Extensions')
 * In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (relative to this repo the shapefile will be at  `../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 * Use the default name for the file
 * Keep default of modeling turns
 * Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
 * Leave elevation modeling as 'None'
-* Delete the default network attributes with the 'Remove All' button
+* Delete the default network attribute 'Oneway' with the 'Remove All' button
 * Click 'Add...' button to create a new network attribute
-* On the 'Add New Attribute' dialog enter the following, then click 'OK' (**note that the 'Name' attribute must have the exact name defined below or the python script that generates the isochrones won't be able to find it**):
+* On the 'Add New Attribute' dialog enter the following, then click 'OK' (**the 'Name' value below must be the exact string defined here or the python script that generates the isochrones won't be able to find this attribute**):
 	* `Name`: 'foot_permission'
 	* `Usage Type`: Restriction
 	* `Restriction Usage`: Prohibited
@@ -69,12 +69,13 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
     foot_permissions(!foot!, !access!, !highway!, !indoor!)
     ```
 * Repeat the previous two steps of for the 'To-From' row in the 'Evaluators' dialog
-* Optionally create a second Network Attribute that tabulates walk minutes using the following inputs: length is assumed to be in feet and walk speed is 3 miles per hour in this case
+* Optionally create a second Network Attribute that tabulates walk minutes using the inputs below (use the snippet below for the field in both the 'From-To' and 'To-From' directions). This attribute returns walking times assuming that the pedestrian is traveling at 3 mph:
 	* `Name`: 'walk_minutes'
 	* `Type`: Cost
-	* `Units`: leave as 'Unknown', see below for details
+	* `Units`: Minutes
 	* `Data Type`: Double
 	* `Use by Default`: False (unchecked)
+    * `Parser`: Python
 	* Pre-Logic Script Code:
     ```py
     def walk_minutes(length):
@@ -85,11 +86,12 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
     ```
     walk_minutes(!Shape!)
     ```
+* With the network attribute(s) added click 'Next' and 'Next' again on the following screen that relates to 'Travel Mode'
 * Select 'No' for the establishment of driving directions
 * Review summary to ensure that all settings are correct then click 'Finish'
 * Select 'Yes' when prompted to proceed with building the Network Dataset
 
-Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly ones that ensure that walking restrictions are being applied to freeways, etc.
+Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips using the Network Analyst Toolbar (more details on how to do this [here](http://desktop.arcgis.com/en/arcmap/latest/extensions/network-analyst/route.htm)) to make sure that routing is working properly.  In particular ensure that walking restrictions are being applied to freeways, etc.
 
 #### Create Isochrones
 
