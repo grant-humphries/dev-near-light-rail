@@ -9,5 +9,5 @@
 bin/
 develop-eggs/
 eggs/
-lightraildev.egg-info/
+*.egg-info/
 parts/
