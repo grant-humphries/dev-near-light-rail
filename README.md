@@ -20,17 +20,14 @@ Python package dependencies are retrieved via `buildout`, however some of the GI
 With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to create project specific instance of python that includes buildout then run `./bin/buildout` to fetch the remaining python packages.
 
 #### Update MAX Stop Data
-buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: 
+buildout has generated an executable that will fetch the appropriate stops for this analysis, to execute it enter the following from the home directory: 
 ```sh
 ./bin/get_permanent_max_stops -d 'dbname' -u 'username' -p 'password'
 ```  
-To see the options available for the script use 
-```
-./bin/get_permanent_max_stops --help
-```
+To see the options available for the script use: `./bin/get_permanent_max_stops --help`
 
 #### Get Routable Street and Trail Shapefile via OpenStreetMap
-Again a script has been created that carries out this task.  To deploy enter:
+A script has also been created that carries out this task.  To deploy enter:
 ```sh
 ./bin/osm2routable_shp
 ```  
@@ -40,7 +37,7 @@ See options by appending the  `--help` parameter.
 As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
 * Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
-* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (relative to this repo the shapefile will be at  `../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
 * Use the default name for the file
 * Keep default of modeling turns
 * Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
@@ -54,54 +51,45 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
 	* `Use by Default`: True (checked)
 * Click the 'Evaluators...' button
 * In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
-* In the 'Field Evaluators' window set the Parser to Python and enter the following code:
+* In the 'Field Evaluators' window set the 'Parser' to 'Python' and enter the following code:
 	* Pre-Logic Script Code:
     ```py
     def foot_permissions(foot, access, highway, indoor):
         if foot in ('yes', 'designated', 'permissive'):
             return False
-    
-        elif access == 'no'
-                or highway in ('trunk', 'motorway', 'construction')
-                or foot == 'no' or indoor == 'yes':
+        elif access == 'no' or \
+                highway in ('trunk', 'motorway', 'construction') or \
+                foot == 'no' or indoor == 'yes':
             return True
         else:
             return False
     ```
-    
     * Value =
     ```
     foot_permissions(!foot!, !access!, !highway!, !indoor!)
     ```
-
-
-
 * Repeat the previous two steps of for the 'To-From' row in the 'Evaluators' dialog
+* Optionally create a second Network Attribute that tabulates walk minutes using the following inputs: length is assumed to be in feet and walk speed is 3 miles per hour in this case
 	* `Name`: 'walk_minutes'
 	* `Type`: Cost
 	* `Units`: leave as 'Unknown', see below for details
 	* `Data Type`: Double
 	* `Use by Default`: False (unchecked)
-
-
-length is assumed to be in feet and walk speed is 3 miles per hour in this case
-
-```py
-def walkMinutes(length):
-    walk_time = length / (5280 * (3 / float(60)))
-    return walk_time
-```
-
-```
-walkMinutes(!Shape!)
-```
-
-
+	* Pre-Logic Script Code:
+    ```py
+    def walk_minutes(length):
+        walk_time = length / (5280 * (3 / float(60)))
+        return walk_time
+    ```
+    * Value =
+    ```
+    walk_minutes(!Shape!)
+    ```
 * Select 'No' for the establishment of driving directions
 * Review summary to ensure that all settings are correct then click 'Finish'
 * Select 'Yes' when prompted to proceed with building the Network Dataset
 
-Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly that the foot permisson restrictions are being applied to freeways, etc.
+Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips to make sure that routing is working properly, particularly ones that ensure that walking restrictions are being applied to freeways, etc.
 
 #### Create Isochrones
 
