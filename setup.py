@@ -18,6 +18,7 @@ setup(
         # python development so buildout can't find it even when installed
         # 'arcpy',
         'fiona>=1.6.2',
+        'gdal>=1.11.2',
         'overpass>=0.4.0',
         'pyproj>=1.9.4',
         'shapely>=1.3',

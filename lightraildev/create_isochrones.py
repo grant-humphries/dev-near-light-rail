@@ -1,9 +1,8 @@
-import os
 import re
 import sys
 from argparse import ArgumentParser
 from datetime import timedelta
-from os.path import basename, dirname, exists, join
+from os.path import basename, dirname, join
 from timeit import timeit
 
 from arcpy import env, CheckOutExtension, ListFields, SpatialReference
@@ -11,11 +10,12 @@ from arcpy.analysis import GenerateNearTable
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
     DeleteField, MakeFeatureLayer, SelectLayerByAttribute
+from arcpy.mapping import ListLayers
 from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
-from lightraildev.common import DATA_DIR, DESC_FIELD, HOME, ID_FIELD, \
-    MAX_STOPS, ROUTES_FIELD, SHP_DIR, STOP_FIELD, TEMP_DIR
+from lightraildev.common import DESC_FIELD, HOME, ID_FIELD, MAX_STOPS, \
+    ROUTES_FIELD, SHP_DIR, STOP_FIELD, TEMP_DIR
 
 MAX_ZONES = join(HOME, 'data', 'shp', 'max_stop_zones.shp')
 ISOCHRONES = join(SHP_DIR, 'isochrones.shp')
@@ -179,55 +179,49 @@ def create_isochrone_fc():
     DeleteField(ISOCHRONES, 'Id')
 
 
-def create_service_area():
-    """Generate and configure a service area layer that will have the
-     ability to make isochrones
-     """
+def generate_isochrones(locations, break_value):
+    """Create walk shed polygons using the OpenStreetMap network from
+    the input locations to the distance of the input break value
+    """
 
-    # Create and configure a service area layer
-    osm_network = join(DATA_DIR, 'osm_foot_ND.nd')
+    # Create and configure a service area layer, these have the ability
+    # generate isochrones
+    osm_network = join(SHP_DIR, 'osm_foot_ND.nd')
     sa_name = 'service_area'
     impedance_attribute = 'Length'
-    travel_from_to = 'TRAVEL_TO'
-    gv.sa_layer = MakeServiceAreaLayer(
-        osm_network, sa_name, impedance_attribute, travel_from_to,
+    sa_layer = MakeServiceAreaLayer(
+        osm_network, sa_name, impedance_attribute, 'TRAVEL_TO',
         restriction_attribute_name='foot_permissions').getOutput(0)
 
     # Within the service area layer there are several sub-layers where
     # things are stored such as facilities, polygons, and barriers.
-    sa_sub_layers = GetNAClassNames(gv.sa_layer)
-    gv.facilities = sa_sub_layers['Facilities']
-    gv.isochrones = sa_sub_layers['SAPolygons']
+    sa_classes = GetNAClassNames(sa_layer)
 
+    # GetNAClassNames returns a dictionary in which the values are
+    # strings that are the names of each class, to get their
+    # corresponding layer objects the ListLayers method must be used
+    facilities_str = sa_classes['Facilities']
+    isochrones_lyr = ListLayers(sa_layer, sa_classes['SAPolygons'])[0]
 
-def generate_isochrones(locations, break_value):
-    """Create walkshed polygons using the OpenStreetMap street and
-    trail network from the input locations to the distance of the input
-    break value
-    """
-
-    if not gv.sa_layer:
-        create_service_area()
-
-    solver_props = GetSolverProperties(gv.sa_layer)
+    solver_props = GetSolverProperties(sa_layer)
     solver_props.defaultBreaks = break_value
 
     # Service area locations must be stored in the facilities sublayer
     clear_other_stops = 'CLEAR'
     exclude_for_snapping = 'EXCLUDE'
-    AddLocations(gv.sa_layer, gv.facilities, locations,
+    AddLocations(sa_layer, facilities_str, locations,
                  append=clear_other_stops,
                  exclude_restricted_elements=exclude_for_snapping)
 
     # Generate the isochrones for this batch of stops, the output will
-    # automatically go to the 'gv.isochrones' variable
-    Solve(gv.sa_layer)
+    # automatically go to the 'sa_isochrones' variable
+    Solve(sa_layer)
 
     i_fields = ['SHAPE@', ID_FIELD, DIST_FIELD]
     i_cursor = InsertCursor(ISOCHRONES, i_fields)
 
     s_fields = ['SHAPE@', UNIQUE_FIELD]
-    with SearchCursor(gv.isochrones, s_fields) as cursor:
+    with SearchCursor(isochrones_lyr, s_fields) as cursor:
         for geom, output_name in cursor:
             iso_attributes = re.split('\s:\s0\s-\s', output_name)
             stop_id = int(iso_attributes[0])
@@ -251,7 +245,7 @@ def add_iso_attributes():
         
         for row in s_cursor:
             stop_id = row[sid_ix]
-            rail_stop_dict[stop_id] = row
+            rail_stop_dict[stop_id] = list(row)
 
     # area value will be used to check for errors in isochrone creation
     iso_fields = [f.name for f in ListFields(ISOCHRONES)]
@@ -293,11 +287,8 @@ def process_options(args):
 def main():
     """"""
 
-    # a single global namespace variable is used here to hold all
-    # so that the global namespace doesn't get clutter
-    global gv
     args = sys.argv[1:]
-    gv = process_options(args)
+    options = process_options(args)
 
     # Prep stop data
     add_name_field()
@@ -305,7 +296,7 @@ def main():
     add_inception_year()
 
     create_isochrone_fc()
-    generate_isochrones(MAX_STOPS, gv.walk_distance)
+    generate_isochrones(MAX_STOPS, options.walk_distance)
     add_iso_attributes()
 
 

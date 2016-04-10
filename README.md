@@ -45,14 +45,14 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
 * Delete the default network attribute 'Oneway' with the 'Remove All' button
 * Click 'Add...' button to create a new network attribute
 * On the 'Add New Attribute' dialog enter the following, then click 'OK' (**the 'Name' value below must be the exact string defined here or the python script that generates the isochrones won't be able to find this attribute**):
-	* `Name`: 'foot_permission'
-	* `Usage Type`: Restriction
-	* `Restriction Usage`: Prohibited
-	* `Use by Default`: True (checked)
+    * `Name`: 'foot_permission'
+    * `Usage Type`: Restriction
+    * `Restriction Usage`: Prohibited
+    * `Use by Default`: True (checked)
 * Click the 'Evaluators...' button
 * In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
 * In the 'Field Evaluators' window set the 'Parser' to 'Python' and enter the following code:
-	* Pre-Logic Script Code:
+    * Pre-Logic Script Code:
     ```py
     def foot_permissions(foot, access, highway, indoor):
         if foot in ('yes', 'designated', 'permissive'):
@@ -70,13 +70,13 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
     ```
 * Repeat the previous two steps of for the 'To-From' row in the 'Evaluators' dialog
 * Optionally create a second Network Attribute that tabulates walk minutes using the inputs below (use the snippet below for the field in both the 'From-To' and 'To-From' directions). This attribute returns walking times assuming that the pedestrian is traveling at 3 mph:
-	* `Name`: 'walk_minutes'
-	* `Type`: Cost
-	* `Units`: Minutes
-	* `Data Type`: Double
-	* `Use by Default`: False (unchecked)
+    * `Name`: 'walk_minutes'
+    * `Type`: Cost
+    * `Units`: Minutes
+    * `Data Type`: Double
+    * `Use by Default`: False (unchecked)
     * `Parser`: Python
-	* Pre-Logic Script Code:
+    * Pre-Logic Script Code:
     ```py
     def walk_minutes(length):
         walk_time = length / (5280 * (3 / float(60)))
@@ -95,11 +95,10 @@ Once the Network Dataset has finished building (which takes a few minutes), plan
 
 #### Create Isochrones
 
-This step creates walkshed polygons (a.k.a. isochrones) that encapsulate the areas that can reach a given MAX stop by walking 'X' miles or less when traveling along the existing street and trail network.
+This step creates walk shed polygons (a.k.a. isochrones) that encapsulate the areas that can reach a given MAX stop by walking a supplied maximum distance (one half mile by default) or less when traveling along the existing street and trail network.
 
-1. Within `arcpy/create_isochrones.py` change the the variable called 'project_folder' to the name of the folder that was created for the current iteration.  This should be a subfolder within `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data` that reflects the current month and year in the format 'YYYY_MM'.  This step is critical because **older data will be overwritten and the wrong inputs will be used** if it is not carried out.  Within the python script named above there is a placeholder that will throw an error if not corrected, this is to ensure this change is made before the script is run.
-2. Adjust walk distance thresholds if necessary.
-3. Run `create_isochrones.py` in the python window within ArcMap.  **This code must be run in the ArcMap python window** as opposed to being lauched from the command prompt because features within a Service Area Layer cannot be accessed using the former method (not sure why, this seems to be a bug, planning to post the question on gis stackexchange and see if I can get a solution).  This is not ideal because when using the windows shell you can prompt users to give input (such as the name of the project folder), so I hope to be able to be able to find a way move away from the present method.  The script executed in a little under 10 minutes as of 02/2014.
+* Use the `d` parameter to set the walk distance in feet if you wish to deviate from the default of 2640
+3. Run `./bin/create_isochrones` The script executed in a little under 10 minutes as of 02/2014.
 4. Once the isochrones shapefile has been created bring it into a desktop GIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network to check for errors there.
 
 #### Geoprocess Property Data and Generate Final Stats
