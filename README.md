@@ -1,7 +1,7 @@
 ***README is currently under construction and fully not up-to-date***
 
 ## Overview
-This project is comprised of scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool executes routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figures for the comparison areas is done with open source tools that include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
+This project is comprised of scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool executes routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figures for the comparison areas, is done with open source tools that include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
 
 ## Project Workflow
 Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
@@ -15,34 +15,55 @@ The following languages/applications must be installed to execute the scripts in
 The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac, and I recommend using [MinGW](http://www.mingw.org/) to get this functionality on Windows.
 
 #### python package management
-Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( `fiona`, `gdal`, `pyproj`, `shapely`) and will not install with buildout on Windows (and potentially on Mac or Linux as well).  To install these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/).  Alternately the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html) is available on all major platforms and can be used to install these as well.  Finally, `arcpy` is a requirement of the script that generates the isochrones.  To get this package you need an ArcGIS Desktop license and the code also draws on the Network Analyst extension.
+Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( `fiona`, `gdal`, `pyproj`, `shapely`) and will not install with buildout on Windows (nor potentially on Mac or Linux).  To install these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/).  Alternately the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html) is available on all major platforms and can be used to install these as well.  Finally, `arcpy` is a requirement of the script that generates the isochrones.  To get this package you need an ArcGIS Desktop license and the code also draws on the Network Analyst extension.
 
-With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to install buildout of a project specific instance of python that will be created and then run `./bin/buildout` to fetch the remaining python packages.
+With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to create project specific instance of python that includes buildout then run `./bin/buildout` to fetch the remaining python packages.
 
 ### Update MAX Stop Data
-buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: `./bin/get_permanent_max_stops`.  To see the option available on the script use `./bin/buildout --help`
+buildout has generated a script that will fetch the appropriate stops for this analysis, to execute it enter: `./bin/get_permanent_max_stops -d 'dbname' -u 'username' -p 'password' `.  To see the options available for the script use `./bin/buildout --help`
 
 ### Get Routable Street and Trail Shapefile via OpenStreetMap
-Again as script has been created that carries out this task.  To deploy enter: `./bin/osm2routable_shp`.  See options by appending the  `--help` parameter.
+Again a script has been created that carries out this task.  To deploy enter: `./bin/osm2routable_shp`.  See options by appending the  `--help` parameter.
 
 ### Create Network Dataset with ArcGIS's Network Analyst
-As of 5/18/2014 this phase of the project can't be automated with arcPy (only ArcObjects), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details, if this functionality becomes available I plan to implented it as my ultimate goal is to have a single shell script that runs this entire process and this is one of my only remaining hurdles
+As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
-1. In ArcMap right-click the OpenStreetMap shapefile created in the last step (called osm_foot.shp) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
-2. On the next screen use the default name for the file
-3. Keep default of modeling turns
-4. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is very important as routing will not function properly without it.**
-5. Leave Z-input as 'None'
-6. Create network attributes based on the python functions here: `arcpy/network_attributes.py` (under the current workflow only the 'foot_permissons' attribute needs to be added.  Optionly there is code to measure walk minutes) 
+1. Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
+2. In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/yyyy_mm/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+3. Use the default name for the file
+4. Keep default of modeling turns
+5. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
+6. Leave elevation modeling as 'None'
+7. Delete the default network attributes with the 'Remove All' button
+8. Click 'Add...' button to create a new network attribute
+9. On the 'Add New Attribute' dialog enter the following, then click 'OK':
+	* `Name`: 'foot_permission' (**This attribute must have this exact name or the python script that generates the isochrones won't be able to find it**)
+	* `Usage Type`: Restriction
+	* `Restriction Usage`: Prohibited
+	* `Use by Default`: True (checked)
+10. Click the 'Evaluators...' button
+11. In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
+12. In the 'Field Evaluators' window set the Parser to Python and enter the following code:
+	* Pre-Logic Script Code:
+    ```py
+    def foot_permissions(foot, access, highway, indoor):
+        if foot in ('yes', 'designated', 'permissive'):
+            return False
+    
+        elif access == 'no'
+                or highway in ('trunk', 'motorway', 'construction')
+                or foot == 'no' or indoor == 'yes':
+            return True
+        else:
+            return False
+    ```
+    * Value =
+    ```
+    foot_permissions(!foot!, !access!, !highway!, !indoor!)
+    ```
 
 
-Settings for this network attribute:
-
-NAME: 'foot_permissions' NOTE!!!: This attribute must have this exact name or the python script
-that generates the isochrones won't be able to find it
-USAGE TYPE: Restriction
-RESTRICTION USAGE: Prohibited
-USE BY DEFAULT?: Yes
+    
 
 EVALUATORS (click Evaluators button to access these settings): there will be two items used in
 evaluators that have all of the same values except for the 'Direction' field
@@ -56,22 +77,9 @@ highway field.  this is because we want to route along streets that are under co
 analysis unless there finished type isn't specified (in which case the 'construction' value would
 persist in the highway field)
 
-```py
-def footPermissions(foot, access, highway, indoor):
-    if foot in ('yes', 'designated', 'permissive'):
-        return False
 
-    elif access == 'no'
-            or highway in ('trunk', 'motorway', 'construction')
-            or foot == 'no' or indoor == 'yes':
-        return True
-    else:
-        return False
-```
 
-```
-footPermissions(!foot!, !access!, !highway!, !indoor!)
-```
+
 
 UPDATE 02/2014 - ***I refactored that generates the isocrones so adding the walk minutes attribute is
 no longer compulsory.***  I'm leaving the code in place in case walk minutes are ever needed.
