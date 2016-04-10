@@ -49,6 +49,7 @@ load_shapefiles() {
     echo '2) Loading shapefiles into Postgres...'
     echo "Start time is: $( date +%r )"
 
+    # espg code of oregon state plane north projection
     ospn=2913
 
     # this array contains entries that are the shapefile path and the
@@ -140,15 +141,17 @@ generate_stats() {
 }
 
 export_to_csv() {
-    # Write final output tables to csv
     echo '7) Exporting stats to csv...'
 
     mkdir -p "${CSV_DIR}"
 
-    stats_tbls=( 'pres_stats_w_near_max' 'pres_stats_minus_near_max' )
+    stats_tbls=( 'final_stats' 'final_stats_minus_max' )
     for tbl in "${stats_tbls[@]}"; do
-        echo "\copy ${tbl} TO ${CSV_DIR}/${tbl}.csv CSV HEADER" \
-            | psql -h "${HOST}" -d "${DBNAME}" -U "${USER}"
+        copy_cmd="\copy ${tbl} TO ${CSV_DIR}/${tbl}.csv CSV HEADER"
+
+        # on_error_stop stops script if exception is raised
+        psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
+            -v 'ON_ERROR_STOP=1' -c "${copy_cmd}"
     done
 }
 

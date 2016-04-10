@@ -1,16 +1,14 @@
---This script generates figures for properties near the max and built 
---upon since the decision to build the nearby max line as well as stats
---quantify real estate growth in the Portland metro region as a whole, 
---for comparison purposes
+--This script generates measure of real estate growth for properties
+--with the max isochrones and that were built upon since the decision
+--to build the nearby max line as well as figures that quantify real
+--estate growth in the Portland metro region as a whole, for
+--comparison purposes
 
---Create versions of the taxlot- and multifam- analysis tables that 
---remove the duplicates that exist when properties are within walking 
---distance of multiple stops that have different 'max zone' 
---associations, these will be used to remove double counting from 
---regional totals
 
---using the from the original taxlots dataset and setting them as the 
---primary key ensures no duplicates
+--Create versions of taxlot and multifam tables that remove the
+--duplicates that exist when properties are within walking distance of
+--multiple stops that have different 'max zone' associations, these
+--will be used to remove double counting from regional totals
 drop table if exists unique_taxlots cascade;
 create table unique_taxlots (
     gid int primary key references taxlots,
@@ -71,141 +69,155 @@ create table property_stats (
     zone_rank int
 );
 
-
---This function will generate the stats needed for this analysis from
---the taxlot- and multi-fam- analysis tables.  Each time the function
---is called it adds one or more entries to the property_stats table the
---contents of those entries are dictated by the function parameters
+-- A call to this function adds one or more entries to the
+--'property_stats' table, the contents of those entries are dictated by
+--the function parameters
 create or replace function insert_property_stats(
-    subset text, group_method text, includes_max boolean) returns void as $$
+    region text, group_method text, includes_max boolean) returns void as $$
 declare
-    group_desc text;
+    desc_str text;
     grouping_field text;
     taxlot_table text;
     multifam_table text;
 
     zone_clause text := '';
-    not_near_max_clause text := '';
-    group_rank text := '0';
-    zone_rank text := '0';
+    not_near_clause text := '';
+    group_rank text := 0;
+    zone_rank text := 0;
 
 begin
-    if subset = 'near_max' then
-        group_desc := 'Properties in MAX Walkshed';
-        group_rank := '1';
-    elsif subset = 'ugb' then
-        group_desc := 'UGB';
-    elsif subset = 'tm_dist' then
-        group_desc := 'TriMet District';
-    elsif subset = 'nine_cities' then
-        group_desc := 'Nine Biggest Cities in TM District';
+    if region = 'near_max' then
+        desc_str := 'Properties in MAX Walkshed';
+        group_rank := 1;
+    elsif region = 'ugb' then
+        desc_str := 'UGB';
+    elsif region = 'tm_dist' then
+        desc_str := 'TriMet District';
+    elsif region = 'nine_cities' then
+        desc_str := 'Nine Biggest Cities in TM District';
     else
-        raise notice 'invalid input for ''subset'' parameter, enter';
-        raise notice '''near_max'', ''ugb'', ''tm_dist'', or ''nine_cities''.';
+        raise exception 'invalid input for ''region'' parameter'
+            using hint 'accepted values are ''near_max'', ''ugb'', ' ||
+                       '''tm_dist'' and ''nine_cities''';
     end if;
 
-    --group_method determines whether a set of entries will be created for each max zone
-    --within the current subset or whether a single entry will be created that describes the
-    --subset as a whole.  The same property can belong to multiple max zones and will be
-    --counted in each, but the former type of entry eliminates as duplicates
-    if group_method = 'by_zone' then
+    --'group_method' determines whether a set of entries will be
+    --created for each max zone within the current region or whether a
+    --single entry will be created that describes the region as a whole
+
+    --a single tax lot can belong to multiple zones, and will be
+    --counted in each, a region-wide count eliminates duplicates
+    if group_method = 'zone' then
         grouping_field := 'max_zone';
-        taxlot_table := 'max_taxlots ';
-        multifam_table := 'max_multifam ';
-        zone_clause := 'AND max_zone = tx1.max_zone ';
-    elsif group_method = 'by_subset' then
-        grouping_field := subset;
-        taxlot_table := 'unique_taxlots ';
-        multifam_table := 'unique_multifam ';
-        zone_rank := '1';
+        taxlot_table := 'max_taxlots';
+        multifam_table := 'max_multifam';
+        zone_clause := 'AND max_zone = tx1.max_zone';
+    elsif group_method = 'region' then
+        grouping_field := region;
+        taxlot_table := 'unique_taxlots';
+        multifam_table := 'unique_multifam';
+        zone_rank := 1;
     else
-        raise notice 'invalid input for ''group_method'' parameter,';
-        raise notice 'enter ''by_zone'' or ''by_subset''.';
+        raise exception 'invalid input for ''group_method'' parameter'
+            using hint 'accepted values for are ''zone'' and ''region''';
     end if;
 
-    --the includes_max parameters indicates whether the properties within walking distance of
-    --max stops are to be included in the stats for the current entry
+    --the 'includes_max' parameter indicates whether the properties
+    --within walking distance of max stops are to be included
     if includes_max is false then
-        group_desc := group_desc || ', not in MAX Walkshed';
-        not_near_max_clause := 'AND near_max IS FALSE ';
+        desc_str := desc_str || ', not in MAX walk shed';
+        not_near_clause := 'AND near_max IS FALSE';
     elsif includes_max != true then
-        raise notice 'invalid input for ''includes_max'' parameter, must be a boolean';
+        raise exception 'invalid input for ''includes_max'' parameter'
+            using hint ' must be a boolean';
     end if;
 
-    --the quey below is pieced together based on the function parameters
-    execute 'INSERT INTO property_stats '
-                || 'SELECT ' || quote_literal(group_desc) || '::text, '
-                    || 'COALESCE(STRING_AGG(DISTINCT max_zone, '', ''), ''All Zones''), '
-                    || 'ARRAY_TO_STRING(ARRAY_AGG(DISTINCT max_year ORDER BY max_year), '', ''), '
-                    || 'STRING_AGG(DISTINCT COALESCE(walk_dist::int::text, ''n/a''), '' & ''), '
-                    || 'SUM(totalval), '
-                    || '(SELECT SUM(units) '
-                        || 'FROM ' || multifam_table
-                        || 'WHERE yearbuilt >= max_year '
-                            || 'AND ' || subset || ' IS TRUE '
-                            || zone_clause
-                            || not_near_max_clause
-                        || 'GROUP BY ' || grouping_field || '), '
-                    || '(SELECT SUM(gis_acres) '
-                        || 'FROM ' || taxlot_table
-                        || 'WHERE ' || subset || ' IS TRUE '
-                            || zone_clause
-                            || not_near_max_clause
-                        || 'GROUP BY ' || grouping_field || '), '
-                    || group_rank || ', ' || zone_rank || ' '
-                || 'FROM ' || taxlot_table || 'tx1 '
-                || 'WHERE yearbuilt >= max_year '
-                    || 'AND ' || subset || ' IS TRUE '
-                    || not_near_max_clause
-                || 'GROUP BY ' || grouping_field;
+    execute format (
+        'INSERT INTO property_stats '                                 ||'\n'||
+        '    SELECT '                                                 ||'\n'||
+        '        %1$L::text, '                                        ||'\n'||
+        '        coalesce(string_agg('                                ||'\n'||
+        '            DISTINCT max_zone, '', ''), ''All Zones''), '    ||'\n'||
+        '        string_agg(DISTINCT max_year::text '                 ||'\n'||
+        '                   ORDER BY max_year), '', ''), '            ||'\n'||
+        '        string_agg(DISTINCT walk_dist::int::text, '', ''), ' ||'\n'||
+        '        sum(totalval), '                                     ||'\n'||
+        '        (SELECT sum(units) '                                 ||'\n'||
+        '             FROM %2$I '                                     ||'\n'||
+        '             WHERE yearbuilt >= max_year '                   ||'\n'||
+        '                 AND %3$I IS TRUE '                          ||'\n'||
+        '                 %4$s '                                      ||'\n'||
+        '                 %5$s '                                      ||'\n'||
+        '             GROUP BY %6$I), '                               ||'\n'||
+        '        (SELECT SUM(gis_acres) '                             ||'\n'||
+        '             FROM %7$I '                                     ||'\n'||
+        '             WHERE %3%I IS TRUE '                            ||'\n'||
+        '                 %4$s '                                      ||'\n'||
+        '                 %5$s '                                      ||'\n'||
+        '             GROUP BY %6$I), '                               ||'\n'||
+        '        %8$s, '                                              ||'\n'||
+        '        %9$s '                                               ||'\n'||
+        '    FROM %7$I tx1 '                                          ||'\n'||
+        '    WHERE yearbuilt >= max_year '                            ||'\n'||
+        '        AND %3$I IS TRUE '                                   ||'\n'||
+        '        %5$s '                                               ||'\n'||
+        '    GROUP BY %6$I;',
+        desc_str, multifam_table, region, zone_clause, not_near_clause,
+        grouping_field, taxlot_table, group_rank, zone_rank);
 end;
 $$ language plpgsql;
 
+
 --Properties within walking distance of MAX
-select insert_property_stats('near_max', 'by_zone', true);
-select insert_property_stats('near_max', 'by_subset', true);
+select insert_property_stats('near_max', 'zone', true);
+select insert_property_stats('near_max', 'region', true);
 
 --Comparison properties *including* those within walking distance of MAX
-select insert_property_stats('ugb', 'by_zone', true);
-select insert_property_stats('ugb', 'by_subset', true);
-select insert_property_stats('tm_dist', 'by_zone', true);
-select insert_property_stats('tm_dist', 'by_subset', true);
-select insert_property_stats('nine_cities', 'by_zone', true);
-select insert_property_stats('nine_cities', 'by_subset', true);
+select insert_property_stats('ugb', 'zone', true);
+select insert_property_stats('ugb', 'region', true);
+select insert_property_stats('tm_dist', 'zone', true);
+select insert_property_stats('tm_dist', 'region', true);
+select insert_property_stats('nine_cities', 'zone', true);
+select insert_property_stats('nine_cities', 'region', true);
 
 --Comparison properties *excluding* those within walking distance of MAX
-select insert_property_stats('ugb', 'by_zone', false);
-select insert_property_stats('ugb', 'by_subset', false);
-select insert_property_stats('tm_dist', 'by_zone', false);
-select insert_property_stats('tm_dist', 'by_subset', false);
-select insert_property_stats('nine_cities', 'by_zone', false);
-select insert_property_stats('nine_cities', 'by_subset', false);
+select insert_property_stats('ugb', 'zone', false);
+select insert_property_stats('ugb', 'region', false);
+select insert_property_stats('tm_dist', 'zone', false);
+select insert_property_stats('tm_dist', 'region', false);
+select insert_property_stats('nine_cities', 'zone', false);
+select insert_property_stats('nine_cities', 'region', false);
 
 
-------------------
---Populate and sort output stats tables, these will be written to (csv) spreadsheets
+--Populate and sort final stats tables, these will be written to csv,
+--stats are split into those that include MAX walk shed taxlots and
+--those that do not
 
---Create and populate presentation tables.  Stats are being split into those that include MAX walkshed
---taxlots for comparison and those that do not.
-drop table if exists pres_stats_w_near_max cascade;
-create table pres_stats_w_near_max with oids as
-    select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
+drop table if exists final_stats cascade;
+create table final_stats as
+    select
+        group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
         round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as normalized_totval, 
-        round(housing_units / gis_acres, 2) as normalized_units
+        round(totalval / gis_acres) as total_val_per_acre,
+        round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
     where group_desc not like '%not in MAX Walkshed%'
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
-drop table if exists pres_stats_minus_near_max cascade;
-create table pres_stats_minus_near_max with oids as
-    select group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
+alter table final_stats add primary key (group_desc, max_zone);
+
+drop table if exists final_stats_minus_max cascade;
+create table final_stats_minus_max as
+    select
+        group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
         round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as normalized_totval, 
-        round(housing_units / gis_acres, 2) as normalized_units
+        round(totalval / gis_acres) as total_val_per_acre,
+        round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
     where group_desc like '%not in MAX Walkshed%'
         or group_desc = 'Properties in MAX Walkshed'
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
+
+alter table final_stats_minus_max add primary key (group_desc, max_zone);
 
 --ran in 73,784 ms on 8/5/14
