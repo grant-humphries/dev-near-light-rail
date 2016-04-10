@@ -28,22 +28,22 @@ Again a script has been created that carries out this task.  To deploy enter: `.
 ### Create Network Dataset with ArcGIS's Network Analyst
 As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
-1. Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
-2. In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/yyyy_mm/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
-3. Use the default name for the file
-4. Keep default of modeling turns
-5. Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
-6. Leave elevation modeling as 'None'
-7. Delete the default network attributes with the 'Remove All' button
-8. Click 'Add...' button to create a new network attribute
-9. On the 'Add New Attribute' dialog enter the following, then click 'OK':
+* Open ArcMap and make sure that the Network Analyst Extension is enable (accessible under 'Customize' --> 'Extensions')
+* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (which is in the project folder at the file path  `.../data/yyyy_mm/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
+* Use the default name for the file
+* Keep default of modeling turns
+* Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
+* Leave elevation modeling as 'None'
+* Delete the default network attributes with the 'Remove All' button
+* Click 'Add...' button to create a new network attribute
+* On the 'Add New Attribute' dialog enter the following, then click 'OK':
 	* `Name`: 'foot_permission' (**This attribute must have this exact name or the python script that generates the isochrones won't be able to find it**)
 	* `Usage Type`: Restriction
 	* `Restriction Usage`: Prohibited
 	* `Use by Default`: True (checked)
-10. Click the 'Evaluators...' button
-11. In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
-12. In the 'Field Evaluators' window set the Parser to Python and enter the following code:
+* Click the 'Evaluators...' button
+* In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
+* In the 'Field Evaluators' window set the Parser to Python and enter the following code:
 	* Pre-Logic Script Code:
     ```py
     def foot_permissions(foot, access, highway, indoor):
@@ -57,6 +57,7 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
         else:
             return False
     ```
+    
     * Value =
     ```
     foot_permissions(!foot!, !access!, !highway!, !indoor!)
