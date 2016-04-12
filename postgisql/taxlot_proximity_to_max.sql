@@ -14,7 +14,7 @@ drop table if exists max_taxlots cascade;
 create table max_taxlots (
     id serial primary key,
     gid int references taxlots, 
-    geom geometry,
+    geom geometry(MultiPolygon, 2913),
     tlid text,
     totalval numeric,
     gis_acres numeric,
@@ -131,7 +131,7 @@ drop table if exists max_multifam cascade;
 create table max_multifam (
     id serial primary key,
     gid int references multifamily, 
-    geom geometry,
+    geom geometry(MultiPolygon, 2913),
     metro_id int,
     units int,
     unit_type text,

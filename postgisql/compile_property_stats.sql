@@ -12,7 +12,7 @@
 drop table if exists unique_taxlots cascade;
 create table unique_taxlots (
     gid int primary key references taxlots,
-    geom geometry,
+    geom geometry(MultiPolygon, 2913),
     totalval numeric,
     gis_acres numeric,
     yearbuilt int,
@@ -37,7 +37,7 @@ insert into unique_taxlots
 drop table if exists unique_multifam cascade;
 create table unique_multifam (
     gid int primary key references multifamily,
-    geom geometry,
+    geom geometry(MultiPolygon, 2913),
     units int,
     yearbuilt int,
     max_year int,

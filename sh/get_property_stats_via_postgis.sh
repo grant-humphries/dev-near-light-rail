@@ -2,6 +2,11 @@
 # creates and loads a postgis database then calculates the value of
 # development around light rail using sql scripts with spatial functions
 
+# stop script on error and limit messages logged by postgres to warning
+# or greater
+set -e
+export PGOPTIONS='--client-min-messages=warning'
+
 # the code directory is two levels up from this script
 CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
 POSTGIS_DIR="${CODE_DIR}/postgisql"
@@ -81,15 +86,18 @@ remove_natural_areas() {
     # parts of water bodies
     echo '3) removing natural areas, ROW from tax lots'
 
-    filter_sql="${POSTGIS_DIR}/remove_natural_areas.sql"
-    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${filter_sql}"
+    # the ON_ERROR_STOP parameter causes the sql script to stop if it
+    # throws an error at any point
+    filter_sql="${POSTGIS_DIR}/remove_row_and_natural_areas.sql"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
+        -v ON_ERROR_STOP=1 -f "${filter_sql}"
 }
 
 add_year_built_values() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
-    echo '4) Adding yearbuilt values, where missing, '
-    echo 'from supplementary data from Washington County'
+    echo '4) Updating year built values with supplementary data from '
+    echo 'Washington County'
 
     id_col='ms_imp_seg'
     year_col='yr_built'
@@ -99,13 +107,12 @@ add_year_built_values() {
     drop_cmd="DROP TABLE IF EXISTS ${year_tbl} CASCADE;"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${drop_cmd}"
 
-    create_cmd="CREATE TABLE ${year_tbl} \
+    create_cmd="CREATE TABLE ${year_tbl}
                (${id_col} text PRIMARY KEY, ${year_col} int);"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${create_cmd}"
 
-    csv_cmd="\copy ${year_tbl} FROM ${year_csv} CSV HEADER;" \
+    csv_cmd="\copy ${year_tbl} FROM ${year_csv} CSV HEADER;"
     psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}" -c "${csv_cmd}"
-
 
     rno2tlid_tbl='rno2tlid'
     rno2tlid_dbf="${YR_BUILT_DIR}/wash_co_rno2tlid.dbf"
@@ -113,13 +120,13 @@ add_year_built_values() {
     shp2pgsql -d -n -D "${rno2tlid_dbf}" "${rno2tlid_tbl}" \
         | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
 
-    # Add the missing years to the rlis tax lot data when the year is
-    # greater than what is in rlis 
+    # Add the washington county year to the tax lots when the year is
+    # missing or greater than the existing value
     add_years_sql="${POSTGIS_DIR}/add_missing_year_built.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
          -v wash_co_year="${year_tbl}" -v rno2tlid="${rno2tlid_tbl}" \
          -v id_col="${id_col}" -v year_col="${year_col}" \
-         -f "${add_years_sql}"
+         -v ON_ERROR_STOP=1  -f "${add_years_sql}"
 }
 
 get_taxlot_max_proximity() {
@@ -128,7 +135,8 @@ get_taxlot_max_proximity() {
 
     # Add proximity attributes to properties based on spatial relationships
     geoprocess_sql="${POSTGIS_DIR}/geoprocess_properties.sql"
-    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${geoprocess_sql}"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
+        -v ON_ERROR_STOP=1 -f "${geoprocess_sql}"
 }
 
 generate_stats() {
@@ -137,7 +145,8 @@ generate_stats() {
     echo '6) Compiling final stats...'
 
     stats_sql="${POSTGIS_DIR}/compile_property_stats.sql"
-    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -f "${stats_sql}"
+    psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
+        -v ON_ERROR_STOP=1 -f "${stats_sql}"
 }
 
 export_to_csv() {
@@ -148,16 +157,13 @@ export_to_csv() {
     stats_tbls=( 'final_stats' 'final_stats_minus_max' )
     for tbl in "${stats_tbls[@]}"; do
         copy_cmd="\copy ${tbl} TO ${CSV_DIR}/${tbl}.csv CSV HEADER"
-
-        # on_error_stop stops script if exception is raised
-        psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
-            -v 'ON_ERROR_STOP=1' -c "${copy_cmd}"
+        psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${copy_cmd}"
     done
 }
 
 main() {
-    create_postgis_db
-    load_shapefiles
+#    create_postgis_db
+#    load_shapefiles
     remove_natural_areas
     add_year_built_values
     get_taxlot_max_proximity

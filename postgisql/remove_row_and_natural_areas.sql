@@ -9,7 +9,7 @@
 drop table if exists developed_taxlots cascade;
 create table developed_taxlots (
     gid int primary key references taxlots,
-    geom geometry,
+    geom geometry(MultiPolygon, 2913),
     tlid text,
     totalval numeric,
     gis_acres numeric,
@@ -18,42 +18,54 @@ create table developed_taxlots (
     yearbuilt int
 );
 
---select only tax lots that are *not* right-of-way or river
+--select only tax lots that are *not* right-of-way or river, ST_MakeValid
+--fixes self intersecting rings in the taxlots
 insert into developed_taxlots
-    select *
+    select
+        gid, ST_MakeValid(geom), tlid, totalval, gis_acres, prop_code,
+        landuse, yearbuilt
     from taxlots
     where tlid !~ 'RIV$|STR$|RR$|BPA$|RAIL|RLRD$|ROADS$|WATER$|RW$|COM$|NA$';
+
+create index dev_taxlots_gix on developed_taxlots using GIST (geom);
+vacuum analyze developed_taxlots;
 
 
 --The basis of the approach below is derived from this post:
 --http://gis.stackexchange.com/questions/31310
 
+drop index if exists orca_type_ix cascade;
+create index orca_type_ix on orca using BTREE (unittype);
+vacuum analyze orca;
+
 drop table if exists orca_taxlots cascade;
-with disjoint_orca_taxlots as (
-    select
-        t.gid,
-        --this prevents tax lots completely within natural areas
-        --from having to go through the costly st_intersection step
-        case
-            when ST_Within(t.geom, o.geom) then t.geom
-            else ST_Multi(ST_Intersection(t.geom, o.geom))
-        end as geom,
-        case
-            when ST_Within(t.geom, o.geom) then 'drop'
-            else 'compare'
-        end as action_type
-    from taxlots t, orca o
-    --first filtering with st_intersects instead of running everything
-    --through st_intersection is significantly less expensive
-    where ST_Intersects(t.geom, o.geom)
-        --only the following orca types are considered natural areas
-        --for the purposes of this project
-        and o.unitype in ('Cemetery', 'Golf Course', 'Natural Area', 'Park'))
---tax lots can be split into pieces if multiple orca areas overlap them
---this part of the query reunifies them
 create table orca_taxlots as
+    with orca_taxlots_fragments as (
+        select
+            dt.gid,
+            --this prevents tax lots completely within natural areas
+            --from having to go through the costly st_intersection step
+            case
+                when ST_Within(dt.geom, o.geom) then dt.geom
+                else ST_Multi(ST_Intersection(dt.geom, ST_MakeValid(o.geom)))
+            end as geom,
+            case
+                when ST_Within(dt.geom, o.geom) then 'drop'
+                else 'compare'
+            end as action_type
+        from developed_taxlots dt, orca o
+        --first filtering with st_intersects instead of running
+        --everything through st_intersection is significantly less
+        --expensive
+        where ST_Intersects(dt.geom, o.geom)
+            --only the following orca types are considered natural
+            --areas for the purposes of this project
+            and o.unittype in ('Cemetery', 'Golf Course',
+                               'Natural Area', 'Park'))
+    --tax lots can be split into pieces if multiple orca areas overlap
+    --them this part of the query reunifies them
     select gid, ST_Multi(ST_Union(geom)) as geom, action_type
-    from disjoint_orca_taxlots
+    from orca_taxlots_fragments
     group by gid, action_type;
 
 alter table orca_taxlots add primary key (gid);
