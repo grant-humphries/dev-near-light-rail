@@ -7,7 +7,6 @@
 --largest cities in the portland metro area.  It does all this for
 --multi-family housing units as well
 
-
 --1) Taxlots
 
 drop table if exists max_taxlots cascade;

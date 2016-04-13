@@ -17,7 +17,7 @@ RLIS_DIR='/g/Rlis'
 
 CITY="${RLIS_DIR}/BOUNDARY/cty_fill.shp"
 MULTIFAMILY="${RLIS_DIR}/LAND/multifamily_housing_inventory.shp"
-ORCA="${RLIS_DIR}/LAND/orca.shp"
+ORCA_SITES="${RLIS_DIR}/LAND/orca_sites.shp"
 TAXLOTS="${RLIS_DIR}/TAXLOTS/taxlots.shp"
 TM_DISTRICT="${TRIMET_DIR}/tm_fill.shp"
 UGB="${RLIS_DIR}/BOUNDARY/ugb.shp"
@@ -62,7 +62,7 @@ load_shapefiles() {
     shapefiles=(
         "${CITY}",'city'                "${ISOCHRONES}",''
         "${MAX_STOPS}",''               "${MULTIFAMILY}",'multifamily'
-        "${ORCA}",''                    "${TAXLOTS}",''
+        "${ORCA_SITES}",''              "${TAXLOTS}",''
         "${TM_DISTRICT}",'tm_district'  "${UGB}",''
     )
 
@@ -84,7 +84,8 @@ remove_natural_areas() {
     # Filter out properties that are parks, natural areas, cemeteries
     # and golf courses as well those that are street right-of-way or
     # parts of water bodies
-    echo '3) removing natural areas, ROW from tax lots'
+    echo '3) removing natural areas, ROW from tax lots, start time is: '
+    echo "$( date +%r ), execution time is ~30 minutes..."
 
     # the ON_ERROR_STOP parameter causes the sql script to stop if it
     # throws an error at any point
