@@ -29,6 +29,8 @@ create table max_taxlots (
     nine_cities boolean
 );
 
+vacuum analyze ischrones;
+
 --Spatially join the tax lots and isochrones, note that duplicate geometries
 --will exist in this table if a taxlot is within walking distance multiple 
 --stops that are in different 'max zones', but duplicates of a properties 
@@ -46,30 +48,33 @@ insert into max_taxlots (
         dt.gid, dt.geom, dt.tlid, dt.totalval, dt.gis_acres, dt.prop_code,
         dt.landuse, dt.yearbuilt, iso.max_zone, iso.walk_dist;
 
---Find the max zone and max year of the nearest stop to each tax lot, 
---'<->' is the postgis nearest neighbor operator, discussion of this 
---can be found here: http://gis.stackexchange.com/questions/52792
-drop table if exists tl_nearest_stop cascade;
-create temp table tl_nearest_stop with oids as
-    --using an array in subquery of the select clause allows nearest
-    --neighbor, which is an expensive operation, to be runonce
-    select gid, (
-        select array[incpt_year::text, max_zone] 
-        from max_stops 
-        order by geom <-> dt.geom limit 1) as year_zone
-    from developed_taxlots dt;
-
-alter table tl_nearest_stop add primary key (gid);
-vacuum analyze tl_nearest_stop;
-
 --get unique id's of taxlots that are within an ischron
-drop table if exists isochrone_taxlots cascade;
 create temp table isochrone_taxlots as
     select distinct gid
     from max_taxlots;
 
 alter table isochrone_taxlots add primary key (gid);
 vacuum analyze isochrone_taxlots;
+
+--Find the max zone and max year of the nearest stop to each tax lot, 
+--'<->' is the postgis nearest neighbor operator, discussion of this 
+--can be found here: http://gis.stackexchange.com/questions/52792
+drop table if exists tl_nearest_stop cascade;
+create temp table tl_nearest_stop with oids as
+    --using an array in subquery of the select clause allows nearest
+    --neighbor, which is an expensive operation, to be run once
+    select gid, (
+        select array[incpt_year::text, max_zone] 
+        from max_stops 
+        order by geom <-> dt.geom
+        limit 1) as year_zone
+    from developed_taxlots dt
+    where not exists (
+        select 1 from isochrone_taxlots
+        where gid = dt.gid);
+
+alter table tl_nearest_stop add primary key (gid);
+vacuum analyze tl_nearest_stop;
 
 --Insert taxlots that are not within walking distance of max stops into
 --max_taxlots 
@@ -83,14 +88,13 @@ insert into max_taxlots (
     from developed_taxlots dt, tl_nearest_stop ns
     where dt.gid = ns.gid
         and not exists (
-            select null from isochrone_taxlots
+            select 1 from isochrone_taxlots
             where gid = dt.gid);
 
 create index max_taxlot_gix on max_taxlots using GIST (geom);
 vacuum analyze max_taxlots;
 
 --Get nine largest portland metro city limits as a single geometry
-drop table if exists nine_cities cascade;
 create temp table nine_cities as
     select ST_Union(geom), 1 as common
     from city
@@ -162,24 +166,26 @@ insert into max_multifam (
         mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type,
         mf.area, mf.mixed_use, iso.max_zone, iso.walk_dist;
 
-drop table if exists mf_nearest_stop cascade;
+create temp table isochrone_multifam as
+    select distinct gid
+    from max_multifam;
+
+alter table isochrone_multifam add primary key (gid);
+vacuum analyze isochrone_multifam;
+
 create temp table mf_nearest_stop as
     select gid, (
         select array[incpt_year::text, max_zone]
         from max_stops
-        order by geom <-> mf.geom limit 1) as year_zone
-    from multifamily mf;
+        order by geom <-> mf.geom
+        limit 1) as year_zone
+    from multifamily mf
+        and not exists (
+            select 1 from isochrone_multifam
+            where gid = mf.gid);
 
 alter table mf_nearest_stop add primary key (gid);
 vacuum analyze mf_nearest_stop;
-
-drop table if exists isochrone_multifam cascade;
-create table isochrone_multifam as
-    select distinct gid
-    from max_multifam;
-    
-alter table isochrone_multifam add primary key (gid);
-vacuum analyze isochrone_multifam;
 
 insert into max_multifam (
         gid, geom, metro_id, units, unit_type, gis_acres, mixed_use, 
@@ -191,7 +197,7 @@ insert into max_multifam (
     from multifamily mf, mf_nearest_stop ns
     where mf.gid = ns.gid
         and not exists (
-            select null from isochrone_multifam
+            select 1 from isochrone_multifam
             where gid = mf.gid);
 
 create index max_multifam_gix on max_multifam using GIST (geom);

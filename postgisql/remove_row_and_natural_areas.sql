@@ -20,11 +20,25 @@ create table developed_taxlots (
 --select only tax lots that are *not* right-of-way or river, ST_MakeValid
 --fixes self intersecting rings in the taxlots
 insert into developed_taxlots
+    --the bounding box that exists around the trimet district and the
+    --ugb defines the area of interest for this project
+    with boundaries (geom, name) as (
+        select geom, 'ugb'
+        from ugb
+            union
+        select geom, 'trimet district'
+        from tm_district),
+    b_box as (
+        select ST_SetSRID(ST_Extent(geom), 2913) as geom
+        from boundaries)
     select
         gid, ST_MakeValid(geom), tlid, totalval, gis_acres, prop_code,
         landuse, yearbuilt
-    from taxlots
-    where tlid !~ 'RIV$|STR$|RR$|BPA$|RAIL|RLRD$|ROADS$|WATER$|RW$|COM$|NA$';
+    from taxlots t
+    where tlid !~ 'RIV$|STR$|RR$|BPA$|RAIL|RLRD$|ROADS$|WATER$|RW$|COM$|NA$'
+        and exists (
+            select 1 from b_box b
+            where t.geom && b.geom);
 
 create index dev_taxlots_gix on developed_taxlots using GIST (geom);
 vacuum analyze developed_taxlots;
@@ -64,7 +78,13 @@ create index orca_buff_gix on orca_buffers using GIST (geom);
 vacuum analyze orca_buffers;
 
 drop table if exists orca_taxlots cascade;
-create table orca_taxlots as
+create table orca_taxlots (
+    gid int primary key references taxlots,
+    geom geometry(MultiPolygon, 2913),
+    action_type text
+);
+
+insert into orca_taxlots
     with overlap as (
         --case 1 prevents tax lots completely within natural areas from
         --having to go through the costly st_intersection step
@@ -93,14 +113,12 @@ create table orca_taxlots as
     --all geometries that aren't polygons won't cover a meaningful
     --portion of a tax lot and should be discarded
     select
-        --gid, ST_Multi(ST_Union(geom)) as geom,
-        gid, ST_Union(geom) as geom,
+        gid, ST_Multi(ST_Union(geom)) as geom,
         max(action_type) as action_type
     from dump
-    --where GeometryType(geom) ilike 'Polygon'
+    where GeometryType(geom) ilike 'Polygon'
     group by gid;
 
-alter table orca_taxlots add primary key (gid);
 create index otl_gix on orca_taxlots using GIST (geom);
 create index otl_act_type_ix on orca_taxlots using BTREE (action_type);
 vacuum analyze orca_taxlots;

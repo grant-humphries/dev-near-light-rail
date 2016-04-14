@@ -85,7 +85,7 @@ remove_natural_areas() {
     # and golf courses as well those that are street right-of-way or
     # parts of water bodies
     echo '3) removing natural areas, ROW from tax lots, start time is: '
-    echo "$( date +%r ), execution time is ~30 minutes..."
+    echo "$( date +%r ), execution time is ~25 minutes..."
 
     # the ON_ERROR_STOP parameter causes the sql script to stop if it
     # throws an error at any point
