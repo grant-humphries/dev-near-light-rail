@@ -7,11 +7,9 @@
 set -e
 export PGOPTIONS='--client-min-messages=warning'
 
-# the code directory is two levels up from this script, msys returns
-# the drive as '/g/' sed converts it to the 'g:/' that windows expects
-MSYS_CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
-CODE_DIR=$( echo ${MSYS_CODE_DIR} | sed 's/^\/\([a-z]\)\//\1:\//' )
-
+# the code directory is two levels up from this script, the -W option
+# on pwd return a windows path as opposed to posix
+CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -W) )
 POSTGIS_DIR="${CODE_DIR}/postgisql"
 YR_BUILT_DIR="${CODE_DIR}/year_built_data"
 PROJECT_DIR='G:/PUBLIC/GIS_Projects/Development_Around_Lightrail'
