@@ -7,13 +7,16 @@
 set -e
 export PGOPTIONS='--client-min-messages=warning'
 
-# the code directory is two levels up from this script
-CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
+# the code directory is two levels up from this script, msys returns
+# the drive as '/g/' sed converts it to the 'g:/' that windows expects
+MSYS_CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -P) )
+CODE_DIR=$( echo ${MSYS_CODE_DIR} | sed 's/^\/\([a-z]\)\//\1:\//' )
+
 POSTGIS_DIR="${CODE_DIR}/postgisql"
 YR_BUILT_DIR="${CODE_DIR}/year_built_data"
-PROJECT_DIR='/g/PUBLIC/GIS_Projects/Development_Around_Lightrail'
-TRIMET_DIR='/g/TRIMET'
-RLIS_DIR='/g/Rlis'
+PROJECT_DIR='G:/PUBLIC/GIS_Projects/Development_Around_Lightrail'
+TRIMET_DIR='G:/TRIMET'
+RLIS_DIR='G:/Rlis'
 
 CITY="${RLIS_DIR}/BOUNDARY/cty_fill.shp"
 MULTIFAMILY="${RLIS_DIR}/LAND/multifamily_housing_inventory.shp"
@@ -98,7 +101,9 @@ add_year_built_values() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
     echo '4) Updating year built values with supplementary data from '
-    echo 'Washington County'
+    echo 'Washington County...'
+
+    TEMP_DIR="${PROJECT_DIR}/dev-near-light-rail/year_built_data"
 
     id_col='ms_imp_seg'
     year_col='yr_built'
@@ -123,7 +128,7 @@ add_year_built_values() {
 
     # Add the washington county year to the tax lots when the year is
     # missing or greater than the existing value
-    add_years_sql="${POSTGIS_DIR}/add_missing_year_built.sql"
+    add_years_sql="${POSTGIS_DIR}/add_wash_co_year_built.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
          -v wash_co_year="${year_tbl}" -v rno2tlid="${rno2tlid_tbl}" \
          -v id_col="${id_col}" -v year_col="${year_col}" \
@@ -165,7 +170,7 @@ export_to_csv() {
 main() {
 #    create_postgis_db
 #    load_shapefiles
-    remove_natural_areas
+#    remove_natural_areas
     add_year_built_values
     get_taxlot_max_proximity
     generate_stats
