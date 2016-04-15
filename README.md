@@ -45,7 +45,7 @@ As of 4/2016 this phase of the project can't be automated with arcpy (only with 
 * Delete the default network attribute 'Oneway' with the 'Remove All' button
 * Click 'Add...' button to create a new network attribute
 * On the 'Add New Attribute' dialog enter the following, then click 'OK' (**the 'Name' value below must be the exact string defined here or the python script that generates the isochrones won't be able to find this attribute**):
-    * `Name`: 'foot_permission'
+    * `Name`: 'foot_permissions'
     * `Usage Type`: Restriction
     * `Restriction Usage`: Prohibited
     * `Use by Default`: True (checked)
