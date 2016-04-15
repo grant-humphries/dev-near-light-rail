@@ -1,15 +1,16 @@
---This script results in a table that contains only tax lots that are
---less than 80% covered by natural areas and that are not in street
---right-of-way or areas that are submerged in water.  This method was
---developed to replace the approach of erasing the geometry of the
---natural areas from the geometry of the tax lots as this left
---fragments in some case where the datasets didn't perfectly align
+--This script results in a table that contains only tax lots that are less
+--than 80% covered by natural areas and that are not in street right-of-way or
+--areas that are submerged in water.  This method was developed to replace the
+--approach of erasing the geometry of the natural areas from the geometry of
+--the tax lots as this left fragments in some case where the datasets didn't
+--perfectly align
 
 drop table if exists developed_taxlots cascade;
 create table developed_taxlots (
     gid int primary key references taxlots,
     geom geometry(MultiPolygon, 2913),
     tlid text,
+    rno text,
     totalval numeric,
     gis_acres numeric,
     prop_code text,
@@ -20,25 +21,21 @@ create table developed_taxlots (
 --select only tax lots that are *not* right-of-way or river, ST_MakeValid
 --fixes self intersecting rings in the taxlots
 insert into developed_taxlots
-    --the bounding box that exists around the trimet district and the
-    --ugb defines the area of interest for this project
-    with boundaries (geom, name) as (
-        select geom, 'ugb'
-        from ugb
-            union
-        select geom, 'trimet district'
-        from tm_district),
-    b_box as (
-        select ST_SetSRID(ST_Extent(geom), 2913) as geom
-        from boundaries)
     select
-        gid, ST_MakeValid(geom), tlid, totalval, gis_acres, prop_code,
+        gid, ST_MakeValid(geom), tlid, rno, totalval, gis_acres, prop_code,
         landuse, yearbuilt
     from taxlots t
     where tlid !~ 'RIV$|STR$|RR$|BPA$|RAIL|RLRD$|ROADS$|WATER$|RW$|COM$|NA$'
-        and exists (
-            select 1 from b_box b
-            where t.geom && b.geom);
+        --only features within the trimet district and ugb are of
+        --interest in this project, for some reason comparing them
+        --separately is faster than combining into a single table and
+        --comparing
+        and (exists (
+            select 1 from tm_district
+            where ST_Intersects(ST_Envelope(t.geom), geom))
+        or exists (
+            select 1 from ugb
+            where ST_Intersects(ST_Envelope(t.geom), geom)));
 
 create index dev_taxlots_gix on developed_taxlots using GIST (geom);
 vacuum analyze developed_taxlots;
@@ -50,14 +47,19 @@ drop index if exists orca_type_ix cascade;
 create index orca_type_ix on orca_sites using BTREE (type);
 vacuum analyze orca_sites;
 
-drop table if exists orca_dissolve cascade;
-create table orca_dissolve as
+create temp table orca_dissolve as
     with orca_union as (
         select ST_Union(ST_MakeValid(geom)) as geom, type
-        from orca_sites
+        from orca_sites os
         --the following orca types cover areas that should be excluded
         --from this analysis
         where type in ('Cemetery', 'Golf Course', 'Park and/or Natural Area')
+            and (exists (
+                select 1 from tm_district
+                where ST_Intersects(ST_Envelope(os.geom), geom))
+            or exists (
+                select 1 from ugb
+                where ST_Intersects(ST_Envelope(os.geom), geom)))
         group by type)
     select (ST_Dump(geom)).geom as geom, type
     from orca_union;
@@ -132,3 +134,13 @@ where dt.gid = ot.gid
              and ST_Area(ot.geom) / ST_Area(dt.geom) > 0.8));
 
 vacuum analyze developed_taxlots;
+
+create temp table filtered_multifam as
+    select gid, geom, metro_id
+    from multifamily mf
+    where exists (
+            select 1 from tm_district
+            where ST_Intersects(ST_Envelope(mf.geom), geom))
+        or (
+            select 1 from ugb
+            where ST_Intersects(ST_Envelope(mf.geom), geom));

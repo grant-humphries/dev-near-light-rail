@@ -81,16 +81,14 @@ load_shapefiles() {
     done
 }
 
-remove_natural_areas() {
-    # Filter out properties that are parks, natural areas, cemeteries
-    # and golf courses as well those that are street right-of-way or
-    # parts of water bodies
-    echo '3) removing natural areas, ROW from tax lots, start time is: '
-    echo "$( date +%r ), execution time is ~25 minutes..."
+filter_properties() {
+    echo '3) removing natural areas, ROW from tax lots, as well as all '
+    echo 'properties that are outside the study area, start time is: '
+    echo "$( date +%r ), execution time is ~5 minutes..."
 
     # the ON_ERROR_STOP parameter causes the sql script to stop if it
     # throws an error at any point
-    filter_sql="${POSTGIS_DIR}/remove_row_and_natural_areas.sql"
+    filter_sql="${POSTGIS_DIR}/filter_property.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
         -v ON_ERROR_STOP=1 -f "${filter_sql}"
 }
@@ -101,44 +99,43 @@ add_year_built_values() {
     echo '4) Updating year built values with supplementary data from '
     echo 'Washington County...'
 
-    TEMP_DIR="${PROJECT_DIR}/dev-near-light-rail/year_built_data"
-
     id_col='ms_imp_seg'
-    year_col='yr_built'
-    year_tbl='wash_co_year_built'
-    year_csv="${YR_BUILT_DIR}/wash_co_year_built.csv"
+    yr_col='yr_built'
+    seg_tbl='wash_yr_seg'
+    seg_csv="${YR_BUILT_DIR}/wash_year_ms_imp_seg.csv"
 
-    drop_cmd="DROP TABLE IF EXISTS ${year_tbl} CASCADE;"
+    drop_cmd="DROP TABLE IF EXISTS ${seg_tbl} CASCADE;"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${drop_cmd}"
 
-    create_cmd="CREATE TABLE ${year_tbl}
-               (${id_col} text PRIMARY KEY, ${year_col} int);"
+    create_cmd="CREATE TABLE ${seg_tbl}
+               (${id_col} text PRIMARY KEY, ${yr_col} int);"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" -c "${create_cmd}"
 
-    csv_cmd="\copy ${year_tbl} FROM ${year_csv} CSV HEADER;"
+    csv_cmd="\copy ${seg_tbl} FROM ${seg_csv} CSV HEADER;"
     psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}" -c "${csv_cmd}"
 
-    rno2tlid_tbl='rno2tlid'
-    rno2tlid_dbf="${YR_BUILT_DIR}/wash_co_rno2tlid.dbf"
+    tlno_tbl='wash_yr_tlno'
+    tlno_dbf="${YR_BUILT_DIR}/wash_year_tlno.dbf"
 
-    shp2pgsql -d -n -D "${rno2tlid_dbf}" "${rno2tlid_tbl}" \
+    shp2pgsql -d -n -D "${tlno_dbf}" "${tlno_tbl}" \
         | psql -q -h "${HOST}" -U "${USER}" -d "${DBNAME}"
 
     # Add the washington county year to the tax lots when the year is
     # missing or greater than the existing value
     add_years_sql="${POSTGIS_DIR}/add_wash_co_year_built.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
-         -v wash_co_year="${year_tbl}" -v rno2tlid="${rno2tlid_tbl}" \
-         -v id_col="${id_col}" -v year_col="${year_col}" \
+         -v wash_yr_seg="${seg_tbl}" -v wash_yr_tlno="${tlno_tbl}" \
+         -v id_col="${id_col}" -v yr_col="${yr_col}" \
          -v ON_ERROR_STOP=1  -f "${add_years_sql}"
 }
 
-get_taxlot_max_proximity() {
-    echo '5) Determining spatial relationships between tax lots and max stops,'
-    echo "ugb, trimet district and cities.  Start time is: $( date +%r )"
+get_property_proximity() {
+    echo '5) Determining spatial relationships between properties and max '
+    echo 'stops, ugb, trimet district and cities.  Start time is: '
+    echo "$( date +%r )"
 
     # Add proximity attributes to properties based on spatial relationships
-    geoprocess_sql="${POSTGIS_DIR}/geoprocess_properties.sql"
+    geoprocess_sql="${POSTGIS_DIR}/property_proximity.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
         -v ON_ERROR_STOP=1 -f "${geoprocess_sql}"
 }
@@ -168,9 +165,9 @@ export_to_csv() {
 main() {
 #    create_postgis_db
 #    load_shapefiles
-#    remove_natural_areas
-    add_year_built_values
-    get_taxlot_max_proximity
+#    filter_properties
+#    add_year_built_values
+#    get_property_proximity
     generate_stats
     export_to_csv
 }

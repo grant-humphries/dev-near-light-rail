@@ -1,38 +1,40 @@
---Washington County has provided development year data (year built) for
---tax lots that is either out of data or does not exist in RLIS, this
---script adds that information to RLIS tax lots
+--Washington County has provided development year data (year built) for tax
+--lots that is either out of data or does not exist in RLIS, this script adds
+--that information to RLIS tax lots
 
---Create column that contains only alpha-numeric characters at the
---beginning of id column, this value matches 'rno' in the 'taxlots'
---table
-alter table :wash_co_year add rno text unique;
-update :wash_co_year set rno = substring(:id_col, '^\w+');
+alter table :wash_yr_tlno add constraint wyt_tlid_ix unique (tlno);
+alter table :wash_yr_tlno add constraint wyt_rno_ix unique (account);
+
+--rno is the consecutive alpha-numeric characters thaht begin :id_col
+create temp table wash_yr_rno as
+    select substring(:id_col, '^\w+') as rno, max(:yr_col) as yr_built
+    from :wash_yr_seg
+    group by rno;
+
+alter table wash_yr_rno add primary key (rno);
 
 --Group by rno to have a single entry for each taxlot, the most recent
 --year will be used as the development date
-drop table if exists max_year cascade;
-create temp table max_year as
+drop table if exists wash_co_years cascade;
+create table wash_co_years as
     select
-        wy.rno,
-        array_agg(wy.:id_col order by wy.:id_col) as all_ids,
-        max(wy.:yr_col) as yearbuilt,
-        array_agg(wy.:yr_col order by wy.:yr_col) as all_years,
-        max(r2t.tlno) as tlid,
-        array_agg(r2t.tlno order by r2t.tlno) as all_tlid
-    from :wash_co_years wy
-        left join :rno2tlid r2t
-            on wy.rno = r2t.account
-    group by rno;
+        coalesce(r.rno, t.account) as rno,
+        t.tlno as tlid,
+        greatest(r.yr_built, t.yr_built::int) as yearbuilt
+    from wash_yr_rno r
+        full join :wash_yr_tlno t
+        on r.rno = t.account;
 
-create index max_yr_rno_ix on max_year using BTREE (rno);
-create index max_yr_tlid_ix on max_year using BTREE (tlid);
-create index max_yr_built_ix on max_year using BTREE (yearbuilt);
-vacuum analyze max_year;
+alter table wash_co_years add yid serial primary key;
+create index wash_co_rno_ix on wash_co_years using BTREE (rno);
+create index wash_co_tlid_ix on wash_co_years using BTREE (tlid);
+create index wash_co_built_ix on wash_co_years using BTREE (yearbuilt);
+vacuum analyze wash_co_years;
 
 --Testing verifies that either an 'rno' or 'tlid' join between the
 --these two tables produces a valid match
 update developed_taxlots as dt
-    set yearbuilt = mx.yearbuilt
-    from max_year mx
-    where (dt.tlid = mx.tlid or dt.rno = mx.rno)
-        and dt.yearbuilt < mx.yearbuilt;
+    set yearbuilt = wy.yearbuilt
+    from wash_co_years wy
+    where (dt.tlid = wy.tlid or dt.rno = wy.rno)
+        and dt.yearbuilt < wy.yearbuilt;

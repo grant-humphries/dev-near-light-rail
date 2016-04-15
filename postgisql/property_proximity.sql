@@ -1,13 +1,41 @@
---This script tabulates which tax lots fall within the supplied
---isochrones and if a tax lot does not fall within an isochrone finds
---the nearest max stop to that tax lot.  These calculations are the
---basis for assigning a 'max group' to each tax lot.  The script also
---checks asto whether each property is in or outside of the urban
---growth boundary, the trimet district and the city limits of the nine
---largest cities in the portland metro area.  It does all this for
---multi-family housing units as well
+--This script tabulates the intersection of tax lots and isochrones and finds
+--the nearest max stop to any tax lot that don't touch an isochrone.  These
+--calculations are the basis for assigning a 'max group' to each tax lot.  The
+--script also checks as to whether each property is in or outside of the urban
+--growth boundary, the trimet district and the city limits of the nine largest
+--cities in the portland metro area.  It does all this for multi-family
+--housing units as well
+
+--Get nine largest portland metro city limits as a single geometry
+create temp table nine_cities as
+    select ST_Union(geom) as geom, 1 as common
+    from city
+    where cityname in (
+        'Portland', 'Gresham', 'Hillsboro', 'Beaverton', 'Tualatin',
+        'Tigard', 'Lake Oswego', 'Oregon City', 'West Linn')
+    group by common;
+
+create index n_city_gix on nine_cities using GIST (geom);
+vacuum analyze nine_cities;
+
 
 --1) Taxlots
+alter table developed_taxlots add nine_cities boolean;
+alter table developed_taxlots add tm_district boolean;
+alter table developed_taxlots add ugb boolean;
+
+--Determine if taxlots are within trimet district, urban growth boundary,
+--and nine largest portland metro city limits
+update developed_taxlots as dt set
+    ugb = (
+        select ST_Intersects(geom, ST_Envelope(dt.geom))
+        from ugb),
+    tm_dist = (
+        select ST_Intersects(geom, ST_Envelope(dt.geom))
+        from tm_district),
+    nine_cities = (
+        select ST_Intersects(geom, ST_Envelope(dt.geom))
+        from nine_cities);
 
 drop table if exists max_taxlots cascade;
 create table max_taxlots (
@@ -24,29 +52,28 @@ create table max_taxlots (
     max_zone text,
     near_max boolean,
     walk_dist numeric,
-    ugb boolean,
+    nine_cities boolean,
     tm_dist boolean,
-    nine_cities boolean
+    ugb boolean
 );
 
-vacuum analyze ischrones;
+vacuum analyze isochrones;
 
 --Spatially join the tax lots and isochrones, note that duplicate geometries
 --will exist in this table if a taxlot is within walking distance multiple 
 --stops that are in different 'max zones', but duplicates of a properties 
 --within the same MAX Zone are eliminated
-insert into max_taxlots (
-        gid, geom, tlid, totalval, gis_acres, prop_code, landuse, yearbuilt,
-        max_year, max_zone, near_max, walk_dist)
+insert into max_taxlots
     select
         dt.gid, dt.geom, dt.tlid, dt.totalval, dt.gis_acres, dt.prop_code,
         dt.landuse, dt.yearbuilt, min(iso.incpt_year), iso.max_zone, true,
-        iso.walk_dist
+        iso.walk_dist, dt.nine_cities, dt.tm_dist, dt.ugb
     from developed_taxlots dt, isochrones iso
     where ST_Intersects(dt.geom, iso.geom)
     group by
         dt.gid, dt.geom, dt.tlid, dt.totalval, dt.gis_acres, dt.prop_code,
-        dt.landuse, dt.yearbuilt, iso.max_zone, iso.walk_dist;
+        dt.landuse, dt.yearbuilt, iso.max_zone, iso.walk_dist, dt.nine_cities,
+        dt.tm_dist, dt.ugb;
 
 --get unique id's of taxlots that are within an ischron
 create temp table isochrone_taxlots as
@@ -78,13 +105,11 @@ vacuum analyze tl_nearest_stop;
 
 --Insert taxlots that are not within walking distance of max stops into
 --max_taxlots 
-insert into max_taxlots (
-        gid, geom, tlid, totalval, gis_acres, prop_code, landuse, yearbuilt,
-        max_year, max_zone, near_max)
+insert into max_taxlots
     select 
         dt.gid, dt.geom, dt.tlid, dt.totalval, dt.gis_acres, dt.prop_code,
         dt.landuse, dt.yearbuilt, ns.year_zone[1]::int, ns.year_zone[2],
-        false
+        false, null, dt.nine_cities, dt.tm_district, dt.ugb
     from developed_taxlots dt, tl_nearest_stop ns
     where dt.gid = ns.gid
         and not exists (
@@ -93,31 +118,6 @@ insert into max_taxlots (
 
 create index max_taxlot_gix on max_taxlots using GIST (geom);
 vacuum analyze max_taxlots;
-
---Get nine largest portland metro city limits as a single geometry
-create temp table nine_cities as
-    select ST_Union(geom), 1 as common
-    from city
-    where cityname in (
-        'Portland', 'Gresham', 'Hillsboro', 'Beaverton', 'Tualatin', 
-        'Tigard', 'Lake Oswego', 'Oregon City', 'West Linn')
-    group by common;
-
-create index n_city_gix on nine_cities using GIST (geom);
-vacuum analyze nine_cities;
-
---Determine if taxlots are within trimet district, urban growth boundary,
---and nine largest portland metro city limits
-update max_taxlots as mt set
-    ugb = (
-        select ST_Intersects(ugb.geom, mt.geom)
-        from ugb),
-    tm_dist = (
-        select ST_Intersects(td.geom, mt.geom)
-        from tm_district td),
-    nine_cities = (
-        select ST_Intersects(nc.geom, mt.geom)
-        from nine_cities nc);
 
 
 --2) Multi-Family Housing Units
@@ -145,9 +145,9 @@ create table max_multifam (
     max_zone text,
     near_max boolean,
     walk_dist numeric,
-    ugb boolean,
+    nine_cities boolean,
     tm_dist boolean,
-    nine_cities boolean
+    ugb boolean
 );
 
 --the area for multifamily is given in square feet, this is converted
@@ -160,7 +160,7 @@ insert into max_multifam (
         mf.gid, mf.geom, mf.metro_id, mf.units, mf.unit_type, 
         (mf.area / 43560), mf.mixed_use, mf.yearbuilt, min(iso.incpt_year), 
         iso.max_zone, true, iso.walk_dist
-    from multifamily mf, isochrones iso
+    from filtered_multifam fm, isochrones iso
     where ST_Intersects(mf.geom, iso.geom)
     group by 
         mf.gid, mf.geom, mf.metro_id, mf.units, mf.yearbuilt, mf.unit_type,
@@ -180,9 +180,9 @@ create temp table mf_nearest_stop as
         order by geom <-> mf.geom
         limit 1) as year_zone
     from multifamily mf
-        and not exists (
-            select 1 from isochrone_multifam
-            where gid = mf.gid);
+    where not exists (
+        select 1 from isochrone_multifam
+        where gid = mf.gid);
 
 alter table mf_nearest_stop add primary key (gid);
 vacuum analyze mf_nearest_stop;
@@ -205,14 +205,14 @@ vacuum analyze max_multifam;
 
 update max_multifam as mm set
     ugb = (
-        select ST_Intersects(ugb.geom, mm.geom)
+        select ST_Intersects(geom, ST_Envelope(mm.geom))
         from ugb),
     tm_dist = (
-        select ST_Intersects(td.geom, mm.geom)
-        from tm_district td),
+        select ST_Intersects(geom, ST_Envelope(mm.geom))
+        from tm_district),
     nine_cities = (
-        select ST_Intersects(nc.geom, mm.geom)
-        from nine_cities nc);
+        select ST_Intersects(geom,ST_Envelope(mm.geom))
+        from nine_cities);
 
 --ran in ~4,702 seconds on 5/20/14 (definitely benefitted from some
 --caching though)
