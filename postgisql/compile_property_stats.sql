@@ -63,7 +63,8 @@ create table property_stats (
     housing_units int,
     gis_acres numeric,
     group_rank int,
-    zone_rank int
+    zone_rank int,
+    primary key (group_desc, max_zone)
 );
 
 -- A call to this function adds one or more entries to the
@@ -186,7 +187,6 @@ select insert_property_stats('tm_dist', 'region', false);
 select insert_property_stats('nine_cities', 'zone', false);
 select insert_property_stats('nine_cities', 'region', false);
 
-alter table property_stats add primary key (group_desc, max_zone);
 
 --Populate and sort final stats tables, these will be written to csv,
 --stats are split into those that include MAX walk shed taxlots and
@@ -218,5 +218,3 @@ create table final_stats_minus_max as
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
 alter table final_stats_minus_max add primary key (group_desc, max_zone);
-
---ran in 73,784 ms on 8/5/14

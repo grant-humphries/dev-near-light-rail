@@ -132,15 +132,3 @@ where dt.gid = ot.gid
     and (ot.action_type = 'drop'
          or (ot.action_type = 'compare'
              and ST_Area(ot.geom) / ST_Area(dt.geom) > 0.8));
-
-vacuum analyze developed_taxlots;
-
-create temp table filtered_multifam as
-    select gid, geom, metro_id
-    from multifamily mf
-    where exists (
-            select 1 from tm_district
-            where ST_Intersects(ST_Envelope(mf.geom), geom))
-        or (
-            select 1 from ugb
-            where ST_Intersects(ST_Envelope(mf.geom), geom));

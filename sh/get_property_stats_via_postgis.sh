@@ -81,23 +81,23 @@ load_shapefiles() {
     done
 }
 
-filter_properties() {
-    echo '3) removing natural areas, ROW from tax lots, as well as all '
-    echo 'properties that are outside the study area, start time is: '
-    echo "$( date +%r ), execution time is ~5 minutes..."
+filter_taxlots() {
+    echo '3) removing natural areas, ROW and all parcel outside of the study'
+    echo "from tax lots, start time is: $( date +%r ), execution time is: "
+    echo '~5 minutes...'
 
     # the ON_ERROR_STOP parameter causes the sql script to stop if it
     # throws an error at any point
-    filter_sql="${POSTGIS_DIR}/filter_property.sql"
+    filter_sql="${POSTGIS_DIR}/filter_taxlots.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
         -v ON_ERROR_STOP=1 -f "${filter_sql}"
 }
 
-add_year_built_values() {
+supplement_year_built() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
-    echo '4) Updating year built values with supplementary data from '
-    echo 'Washington County...'
+    echo '4) Updating year built values for tax lots with supplementary data'
+    echo 'from Washington County...'
 
     id_col='ms_imp_seg'
     yr_col='yr_built'
@@ -122,7 +122,7 @@ add_year_built_values() {
 
     # Add the washington county year to the tax lots when the year is
     # missing or greater than the existing value
-    add_years_sql="${POSTGIS_DIR}/add_wash_co_year_built.sql"
+    add_years_sql="${POSTGIS_DIR}/supplement_year_built.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
          -v wash_yr_seg="${seg_tbl}" -v wash_yr_tlno="${tlno_tbl}" \
          -v id_col="${id_col}" -v yr_col="${yr_col}" \
@@ -132,7 +132,7 @@ add_year_built_values() {
 get_property_proximity() {
     echo '5) Determining spatial relationships between properties and max '
     echo 'stops, ugb, trimet district and cities.  Start time is: '
-    echo "$( date +%r )"
+    echo "$( date +%r ), execution time is: ~"
 
     # Add proximity attributes to properties based on spatial relationships
     geoprocess_sql="${POSTGIS_DIR}/property_proximity.sql"
@@ -165,9 +165,9 @@ export_to_csv() {
 main() {
 #    create_postgis_db
 #    load_shapefiles
-#    filter_properties
-#    add_year_built_values
-#    get_property_proximity
+#    filter_taxlots
+#    supplement_year_built
+    get_property_proximity
     generate_stats
     export_to_csv
 }
