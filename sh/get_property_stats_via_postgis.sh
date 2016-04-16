@@ -52,8 +52,8 @@ create_postgis_db() {
 }
 
 load_shapefiles() {
-    echo '2) Loading shapefiles into Postgres...'
-    echo "Start time is: $( date +%r )"
+    echo $'\n2) Loading shapefiles into Postgres, start time is:'
+    echo "$( date +%r ), execution time is: ~6 minutes..."
 
     # espg code of oregon state plane north projection
     ospn=2913
@@ -82,9 +82,9 @@ load_shapefiles() {
 }
 
 filter_taxlots() {
-    echo '3) removing natural areas, ROW and all parcel outside of the study'
-    echo "from tax lots, start time is: $( date +%r ), execution time is: "
-    echo '~5 minutes...'
+    echo $'\n3) removing natural areas, ROW and parcels outside of the study'
+    echo "area from tax lots, start time is: $( date +%r ), execution time"
+    echo 'is: ~3 minutes...'
 
     # the ON_ERROR_STOP parameter causes the sql script to stop if it
     # throws an error at any point
@@ -96,8 +96,8 @@ filter_taxlots() {
 supplement_year_built() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
-    echo '4) Updating year built values for tax lots with supplementary data'
-    echo 'from Washington County...'
+    echo $'\n4) Updating year built values for tax lots with supplementary'
+    echo 'data from Washington County...'
 
     id_col='ms_imp_seg'
     yr_col='yr_built'
@@ -130,9 +130,9 @@ supplement_year_built() {
 }
 
 get_property_proximity() {
-    echo '5) Determining spatial relationships between properties and max '
+    echo $'\n5) Determining spatial relationships between properties and max'
     echo 'stops, ugb, trimet district and cities.  Start time is: '
-    echo "$( date +%r ), execution time is: ~"
+    echo "$( date +%r ), execution time is: ~5 minutes..."
 
     # Add proximity attributes to properties based on spatial relationships
     geoprocess_sql="${POSTGIS_DIR}/property_proximity.sql"
@@ -141,9 +141,7 @@ get_property_proximity() {
 }
 
 generate_stats() {
-    # Execute sql script that compiles project stats and generates
-    # final export tables
-    echo '6) Compiling final stats...'
+    echo $'\n6) Compiling final stats...'
 
     stats_sql="${POSTGIS_DIR}/compile_property_stats.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
@@ -151,7 +149,7 @@ generate_stats() {
 }
 
 export_to_csv() {
-    echo '7) Exporting stats to csv...'
+    echo $'\n7) Exporting stats to csv...'
 
     mkdir -p "${CSV_DIR}"
 
@@ -163,13 +161,15 @@ export_to_csv() {
 }
 
 main() {
-#    create_postgis_db
-#    load_shapefiles
-#    filter_taxlots
-#    supplement_year_built
+    create_postgis_db
+    load_shapefiles
+    filter_taxlots
+    supplement_year_built
     get_property_proximity
     generate_stats
     export_to_csv
 }
 
+# ran in about 14.5 minutes on 4/15/16,
+# this used to take several hours!
 main

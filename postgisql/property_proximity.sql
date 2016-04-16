@@ -93,7 +93,7 @@ vacuum analyze isochrone_taxlots;
 --Find the max zone and max year of the nearest stop to each tax lot,
 --'<->' is the postgis nearest neighbor operator, discussion of this
 --can be found here: http://gis.stackexchange.com/questions/52792
-create temp table tl_nearest_stop with oids as
+create temp table near_stop_taxlot with oids as
     --using an array in subquery of the select clause allows nearest
     --neighbor, which is an expensive operation, to be run once
     select gid, (
@@ -106,8 +106,8 @@ create temp table tl_nearest_stop with oids as
         select 1 from isochrone_taxlots
         where gid = dt.gid);
 
-alter table tl_nearest_stop add primary key (gid);
-vacuum analyze tl_nearest_stop;
+alter table near_stop_taxlot add primary key (gid);
+vacuum analyze near_stop_taxlot;
 
 --Insert taxlots that are not within walking distance of max stops into
 --max_taxlots
@@ -115,8 +115,8 @@ insert into max_taxlots
     select
         dt.gid, dt.geom, dt.tlid, dt.totalval, dt.gis_acres, dt.prop_code,
         dt.landuse, dt.yearbuilt, ns.year_zone[1]::int, ns.year_zone[2],
-        null, false, dt.nine_cities, dt.tm_district, dt.ugb
-    from developed_taxlots dt, tl_nearest_stop ns
+        null, false, dt.nine_cities, dt.tm_dist, dt.ugb
+    from developed_taxlots dt, near_stop_taxlot ns
     where dt.gid = ns.gid
         and not exists (
             select 1 from isochrone_taxlots
@@ -201,7 +201,7 @@ create temp table isochrone_multifam as
 alter table isochrone_multifam add primary key (gid);
 vacuum analyze isochrone_multifam;
 
-create temp table mf_nearest_stop as
+create temp table near_stop_multifam as
     select gid, (
         select array[incpt_year::text, max_zone]
         from max_stops
@@ -212,15 +212,15 @@ create temp table mf_nearest_stop as
         select 1 from isochrone_multifam
         where gid = mf.gid);
 
-alter table mf_nearest_stop add primary key (gid);
-vacuum analyze mf_nearest_stop;
+alter table near_stop_multifam add primary key (gid);
+vacuum analyze near_stop_multifam;
 
 insert into max_multifam
     select 
         fm.gid, fm.geom, fm.metro_id, fm.units, fm.unit_type,
         (fm.area / 43560), fm.mixed_use, fm.yearbuilt, ns.year_zone[1]::int,
         ns.year_zone[2], null, false, fm.nine_cities, fm.tm_dist, fm.ugb
-    from filtered_multifam fm, mf_nearest_stop ns
+    from filtered_multifam fm, near_stop_multifam ns
     where fm.gid = ns.gid
         and not exists (
             select 1 from isochrone_multifam
