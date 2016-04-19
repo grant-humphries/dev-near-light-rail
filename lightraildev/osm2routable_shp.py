@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser
 from collections import OrderedDict
+from datetime import datetime
 from functools import partial
 from os.path import join
 
@@ -127,6 +128,10 @@ def process_options(args):
 
 def main():
     """"""
+
+    start_time = datetime.now().strftime('%I:%M %p')
+    print 'Fetching OSM data and converting to shapefile, start time is: ' \
+          '{}, run time is: ~3.5 minutes...'.format(start_time)
 
     global gv
     args = sys.argv[1:]

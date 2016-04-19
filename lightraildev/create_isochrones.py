@@ -1,11 +1,11 @@
 import re
 import sys
 from argparse import ArgumentParser
-from datetime import timedelta
+from datetime import datetime
 from os.path import basename, dirname, join
-from timeit import timeit
 
-from arcpy import env, CheckOutExtension, ListFields, SpatialReference
+from arcpy import env, CheckExtension, CheckInExtension, CheckOutExtension, \
+    ListFields, SpatialReference
 from arcpy.analysis import GenerateNearTable
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
@@ -24,10 +24,6 @@ DIST_FIELD = 'walk_dist'
 UNIQUE_FIELD = 'name'
 YEAR_FIELD = 'incpt_year'
 ZONE_FIELD = 'max_zone'
-
-# configure arcpy settings
-CheckOutExtension("Network")
-env.overwriteOutput = True
 
 
 def add_name_field():
@@ -288,7 +284,23 @@ def main():
     """"""
 
     args = sys.argv[1:]
-    options = process_options(args)
+    opts = process_options(args)
+
+    start_time = datetime.now().strftime('%I:%M %p')
+    print 'Creating isochrones with walk distance of {0} feet, start time ' \
+          'is: {1}, run time is: ~ minutes...'.format(opts.walk_distance,
+                                                      start_time)
+
+    # configure arcpy settings
+    env.overwriteOutput = True
+    if CheckExtension('Network') == 'Available':
+        CheckOutExtension('Network')
+    else:
+        print "Network Analyst extension is unavailable so the script " \
+              "can't run, if you have ArcGIS Desktop open close it at that " \
+              "may be utilizing the license, otherwise use the license " \
+              "manager log to determine who it is checked out to"
+        exit()
 
     # Prep stop data
     add_name_field()
@@ -296,11 +308,11 @@ def main():
     add_inception_year()
 
     create_isochrone_fc()
-    generate_isochrones(MAX_STOPS, options.walk_distance)
+    generate_isochrones(MAX_STOPS, opts.walk_distance)
     add_iso_attributes()
 
+    CheckInExtension('Network')
 
 if __name__ == '__main__':
-    runtime_secs = timeit(main(), number=1)
-    print timedelta(seconds=runtime_secs)
+    main()
     # ran in 9:15 on 2/19/14

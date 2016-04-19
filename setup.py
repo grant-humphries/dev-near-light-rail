@@ -17,6 +17,7 @@ setup(
         # arcpy is a requirement as well, but arcpy is terrible for real
         # python development so buildout can't find it even when installed
         # 'arcpy',
+        'comtypes>=1.1.2',
         'fiona>=1.6.2',
         'gdal>=1.11.2',
         'overpass>=0.4.0',

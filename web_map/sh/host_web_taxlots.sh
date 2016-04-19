@@ -1,53 +1,56 @@
-# !/bin/sh
+#!/usr/bin/env bash
+
+# create a version of the tax lot from the development around light
+# rail project that will be used within a web map
+
+set -e
+export PGOPTIONS='--client-min-messages=warning'
 
 # Set localhost postgres parameters
-lh_host=localhost
-lh_user=postgres
-lh_dbname=transit_dev
-
-echo "Enter PostGreSQL password for host=${lh_host} user=${lh_user}:"
-read -s lh_password
+LH_HOST=localhost
+LH_USER=postgres
+LH_DBNAME=lightraildev
 
 # Set maps7 postgres parameters
-m7_host=maps7.trimet.org
-m7_user=geoserve
-m7_schema=misc_gis
-m7_dbname=trimet
+M7_HOST=maps7.trimet.org
+M7_USER=geoserve
+M7_DBNAME=trimet
+M7_SCHEMA=misc_gis
 
-echo "Enter PostGreSQL password for host=${m7_host} user=${m7_user}:"
-read -s m7_password
+# postgres passwords are pulled from pgpass.conf (.pgpass in linux)
 
 # Assign other project variables
-proj_dir="G:/PUBLIC/GIS_Projects/Development_Around_Lightrail"
-code_dir="${proj_dir}/github/dev-near-lightrail/web_map"
-data_dir="${proj_dir}/web_map/shp"
-shp="${data_dir}/${lh_table}.shp"
-table=web_map_taxlots
+PROJECT_DIR="G:/PUBLIC/GIS_Projects/Development_Around_Lightrail"
+CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -W) )
+DATA_DIR="${PROJECT_DIR}/web_map/shp"
 
-createWebMapTaxlots()
-{
-	web_tl_script="${code_dir}/sql/create_web_map_taxlots.sql"
-	echo "psql -w -h $lh_host -U $lh_user -d $lh_dbname -f $web_tl_script"
-	psql -w -h $lh_host -U $lh_user -d $lh_dbname -f "$web_tl_script"
+TABLE='web_map_taxlots'
+SHP="${DATA_DIR}/${TABLE}.shp"
+
+create_web_map_taxlots() {
+    web_taxlot_sql="${CODE_DIR}/sql/create_web_map_taxlots.sql"
+    psql -w -h "${LH_HOST}" -U "${LH_USER}" -d "${LH_DBNAME}" \
+        -v ON_ERROR_STOP=1 -v web_taxlots="${TABLE}" -f "${web_taxlot_sql}"
 }
 
-exportWebTaxlotsToShp()
-{
-	echo "pgsql2shp -k -h $lh_host -u $lh_user \
-		-P $lh_password -f $shp $lh_dbname $table"
-	pgsql2shp -k -h $lh_host -u $lh_user \
-		-P $lh_password -f $shp $lh_dbname $table
+export_taxlots_to_shp() {
+    pgsql2shp -k -h "${LH_HOST}" -u "${LH_USER}" -P "${LH_PASSWORD}" \
+        -f "${SHP}" "${LH_DBNAME}" "${TABLE}"
 }
 
-loadToPgServer()
-{
-	shp_epsg=2913
-	echo "shp2pgsql -d -s $shp_epsg -D -I $shp ${m7_schema}.${table} \
-		| psql -q -h $m7_host -U $m7_user -d $m7_dbname"
-	shp2pgsql -d -s $shp_epsg -D -I $shp ${m7_schema}.${table} \
-		| psql -q -h $m7_host -U $m7_user -d $m7_dbname
+load_to_pg_server() {
+    schema_cmd="CREATE SCHEMA IF NOT EXISTS ${M7_SCHEMA};"
+    psql -h "${M7_HOST}" -U "${M7_USER}" -d "${M7_DBNAME}" -c "${schema_cmd}"
+
+    ospn_epsg=2913
+    shp2pgsql -d -s "${ospn_epsg}" -D -I "${SHP}" "${M7_SCHEMA}.${TABLE}" \
+        | psql -q -h "${M7_HOST}" -U "${M7_USER}" -d "${M7_DBNAME}"
 }
 
-createWebMapTaxlots;
-exportWebTaxlotsToShp;
-loadToPgServer;
+main() {
+    create_web_map_taxlots
+    export_taxlots_to_shp
+    load_to_pg_server
+}
+
+main

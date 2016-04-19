@@ -34,7 +34,7 @@ A script has also been created that carries out this task.  To deploy enter:
 See options by appending the  `--help` parameter.
 
 #### Create Network Dataset with ArcGIS's Network Analyst
-As of 4/2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
+As of April 2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
 
 * Open ArcMap and make sure that the Network Analyst Extension is enabled (accessible under 'Customize' --> 'Extensions')
 * In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (relative to this repo the shapefile will be at  `../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
