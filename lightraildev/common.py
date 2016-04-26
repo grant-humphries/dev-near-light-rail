@@ -6,10 +6,10 @@ from os.path import exists, getmtime, join
 # date of the latest tax lot data
 RLIS_DIR = '//gisstore/gis/Rlis'
 TAXLOTS = join(RLIS_DIR, 'TAXLOTS', 'taxlots.shp')
-date_dir = datetime.fromtimestamp(getmtime(TAXLOTS)).strftime('%Y_%m')
+DATE_DIR = datetime.fromtimestamp(getmtime(TAXLOTS)).strftime('%Y_%m')
 
 HOME = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
-DATA_DIR = join(HOME, 'data', date_dir)
+DATA_DIR = join(HOME, 'data', DATE_DIR)
 SHP_DIR = join(DATA_DIR, 'shp')
 TEMP_DIR = join(DATA_DIR, 'temp')
 MAX_STOPS = join(DATA_DIR, 'shp', 'max_stops.shp')

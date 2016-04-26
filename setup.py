@@ -22,7 +22,7 @@ setup(
         'gdal>=1.11.2',
         'overpass>=0.4.0',
         'pyproj>=1.9.4',
-        'shapely>=1.3',
+        'shapely>=1.3.0',
         'sqlalchemy>=1.0.9',
         'trimet.model.oracle.trans>=1.4.6'
     ],
