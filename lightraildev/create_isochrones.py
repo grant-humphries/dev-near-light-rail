@@ -4,8 +4,7 @@ from argparse import ArgumentParser
 from datetime import datetime
 from os.path import basename, dirname, join
 
-from arcpy import env, CheckExtension, CheckInExtension, CheckOutExtension, \
-    ListFields, SpatialReference
+from arcpy import env,  CheckInExtension, ListFields, SpatialReference
 from arcpy.analysis import GenerateNearTable
 from arcpy.da import InsertCursor, SearchCursor, UpdateCursor
 from arcpy.management import AddField, CopyFeatures, CreateFeatureclass, \
@@ -14,9 +13,9 @@ from arcpy.mapping import ListLayers
 from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
-from lightraildev.common import ATTRIBUTE_LEN, ATTRIBUTE_PED, DESC_FIELD, \
-    HOME, ID_FIELD, MAX_STOPS, OSM_PED_ND, ROUTES_FIELD, SHP_DIR, \
-    STOP_FIELD, TEMP_DIR
+from lightraildev.common import checkout_arcgis_extension, ATTRIBUTE_LEN, \
+    ATTRIBUTE_PED, DESC_FIELD, HOME, ID_FIELD, MAX_STOPS, OSM_PED_ND, \
+    ROUTES_FIELD, SHP_DIR, STOP_FIELD, TEMP_DIR
 
 MAX_ZONES = join(HOME, 'data', 'shp', 'max_stop_zones.shp')
 ISOCHRONES = join(SHP_DIR, 'isochrones.shp')
@@ -294,14 +293,7 @@ def main():
 
     # configure arcpy settings
     env.overwriteOutput = True
-    if CheckExtension('Network') == 'Available':
-        CheckOutExtension('Network')
-    else:
-        print "Network Analyst extension is unavailable so the script " \
-              "can't run, if you have ArcGIS Desktop open close it at that " \
-              "may be utilizing the license, otherwise use the license " \
-              "manager log to determine who it is checked out to"
-        exit()
+    checkout_arcgis_extension('Network')
 
     # Prep stop data
     add_name_field()

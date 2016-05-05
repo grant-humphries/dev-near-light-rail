@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 from os.path import exists, getmtime, join
 
+from arcpy import CheckExtension, CheckOutExtension
+
 # each iteration of the project is stored in a folder that reflects the
 # date of the latest tax lot data
 RLIS_DIR = '//gisstore/gis/Rlis'
@@ -33,3 +35,16 @@ DESC_FIELD = 'route_desc'
 ID_FIELD = 'stop_id'
 ROUTES_FIELD = 'routes'
 STOP_FIELD = 'stop_name'
+
+
+def checkout_arcgis_extension(extension):
+    """"""
+
+    if CheckExtension(extension) == 'Available':
+        CheckOutExtension(extension)
+    else:
+        print "the '{}' extension is unavailable so the script can't run " \
+              "successfully, if you have ArcGIS Desktop open close it, as " \
+              "it may be utilizing the license, otherwise check the " \
+              "license server log to determine who has it checked out"
+        exit()

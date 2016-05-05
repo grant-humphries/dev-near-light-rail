@@ -154,19 +154,19 @@ def process_oracle_options(arglist=None):
 
     parser = ArgumentParser()
     parser.add_argument(
-        '-u', '--user',
-        required=True,
-        help='oracle user name'
-    )
-    parser.add_argument(
         '-d', '--dbname',
-        required=True,
+        default='HAWAII',
         help='name of target oracle database'
     )
     parser.add_argument(
         '-p', '--password',
         required=True,
         help='oracle password for supplied user'
+    )
+    parser.add_argument(
+        '-u', '--user',
+        default='tmpublic',
+        help='oracle user name'
     )
 
     options = parser.parse_args(arglist)
@@ -177,6 +177,8 @@ def main():
     """"""
 
     # As of 4/2016 there are 166 permanent MAX stops
+    print 'Fetching "permanent" MAX stops from the TRANS schema and writing' \
+          'them to shapefile, this takes ~30 seconds'
 
     global gv
     args = sys.argv[1:]

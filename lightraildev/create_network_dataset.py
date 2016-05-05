@@ -37,8 +37,9 @@ from comtypes.gen.esriGeoDatabase import esriDatasetType, \
     NetworkFieldEvaluator
 from comtypes.gen.esriSystem import IArray, IUID, UID
 
-from lightraildev.common import ATTRIBUTE_LEN, ATTRIBUTE_MIN, ATTRIBUTE_PED, \
-     OSM_PED_FC, OSM_PED_FDS, OSM_PED_GDB, OSM_PED_ND, OSM_PED_SHP, SHP_DIR
+from lightraildev.common import checkout_arcgis_extension, ATTRIBUTE_LEN, \
+    ATTRIBUTE_MIN, ATTRIBUTE_PED, OSM_PED_FC, OSM_PED_FDS, OSM_PED_GDB, \
+    OSM_PED_ND, OSM_PED_SHP, SHP_DIR
 
 # for some reason esriSystem.Array objects can't be created normally 
 # via comtypes, I found a workaround on pg 7 of the linked pdf, below is 
@@ -334,18 +335,12 @@ def ctype(obj, interface):
 def main():
     """"""
 
-    env.overwriteOutput = True
-
-    if CheckExtension('Network') == 'Available':
-        CheckOutExtension('Network')
-    else:
-        print 'Network Analyst extension is checked out by another ' \
-              'application or person'
-        exit()
-
     start_time = datetime.now().strftime('%I:%M %p')
     print 'Creating network dataset from osm shapefile, start time ' \
           'is: {1}, run time is: ~4 minutes...'.format(start_time)
+
+    env.overwriteOutput = True
+    checkout_arcgis_extension('Network')
 
     create_gdb_for_network()
     create_gdb_network_dataset()
