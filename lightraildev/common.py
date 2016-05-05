@@ -12,7 +12,18 @@ HOME = '//gisstore/gis/PUBLIC/GIS_Projects/Development_Around_Lightrail'
 DATA_DIR = join(HOME, 'data', DATE_DIR)
 SHP_DIR = join(DATA_DIR, 'shp')
 TEMP_DIR = join(DATA_DIR, 'temp')
-MAX_STOPS = join(DATA_DIR, 'shp', 'max_stops.shp')
+MAX_STOPS = join(SHP_DIR, 'max_stops.shp')
+
+OSM_PED_NAME = 'osm_ped_network'
+OSM_PED_SHP = join(SHP_DIR, '{}.shp'.format(OSM_PED_NAME))
+OSM_PED_GDB = join(DATA_DIR, '{}.gdb'.format(OSM_PED_NAME))
+OSM_PED_FDS = join(OSM_PED_GDB, '{}_fds'.format(OSM_PED_NAME))
+OSM_PED_FC = join(OSM_PED_FDS, '{}_fc'.format(OSM_PED_NAME))
+OSM_PED_ND = join(OSM_PED_FDS, '{}_nd'.format(OSM_PED_NAME))
+
+ATTRIBUTE_PED = 'pedestrian_permissions'
+ATTRIBUTE_LEN = 'length'
+ATTRIBUTE_MIN = 'minutes'
 
 for dir_ in (SHP_DIR, TEMP_DIR):
     if not exists(dir_):

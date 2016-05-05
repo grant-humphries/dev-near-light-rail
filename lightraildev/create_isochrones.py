@@ -14,8 +14,9 @@ from arcpy.mapping import ListLayers
 from arcpy.na import AddLocations, GetSolverProperties, GetNAClassNames, \
     MakeServiceAreaLayer, Solve
 
-from lightraildev.common import DESC_FIELD, HOME, ID_FIELD, MAX_STOPS, \
-    ROUTES_FIELD, SHP_DIR, STOP_FIELD, TEMP_DIR
+from lightraildev.common import ATTRIBUTE_LEN, ATTRIBUTE_PED, DESC_FIELD, \
+    HOME, ID_FIELD, MAX_STOPS, OSM_PED_ND, ROUTES_FIELD, SHP_DIR, \
+    STOP_FIELD, TEMP_DIR
 
 MAX_ZONES = join(HOME, 'data', 'shp', 'max_stop_zones.shp')
 ISOCHRONES = join(SHP_DIR, 'isochrones.shp')
@@ -182,12 +183,12 @@ def generate_isochrones(locations, break_value):
 
     # Create and configure a service area layer, these have the ability
     # generate isochrones
-    osm_network = join(SHP_DIR, 'osm_foot_ND.nd')
+    network_dataset = OSM_PED_ND
     sa_name = 'service_area'
-    impedance_attribute = 'Length'
+    impedance_attribute = ATTRIBUTE_LEN
     sa_layer = MakeServiceAreaLayer(
-        osm_network, sa_name, impedance_attribute, 'TRAVEL_TO',
-        restriction_attribute_name='foot_permissions').getOutput(0)
+        network_dataset, sa_name, impedance_attribute, 'TRAVEL_TO',
+        restriction_attribute_name=ATTRIBUTE_PED).getOutput(0)
 
     # Within the service area layer there are several sub-layers where
     # things are stored such as facilities, polygons, and barriers.
@@ -288,8 +289,8 @@ def main():
 
     start_time = datetime.now().strftime('%I:%M %p')
     print 'Creating isochrones with walk distance of {0} feet, start time ' \
-          'is: {1}, run time is: ~ minutes...'.format(opts.walk_distance,
-                                                      start_time)
+          'is: {1}, run time is: ~1.25 minutes...'.format(
+               opts.walk_distance, start_time)
 
     # configure arcpy settings
     env.overwriteOutput = True
@@ -315,4 +316,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # ran in 9:15 on 2/19/14

@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from datetime import datetime
 from functools import partial
-from os.path import join
 
 import fiona
 import overpass
@@ -12,7 +11,7 @@ from fiona.crs import from_epsg
 from shapely import ops
 from shapely.geometry import mapping, shape
 
-from lightraildev.common import SHP_DIR
+from lightraildev.common import OSM_PED_SHP
 
 
 def overpass2shp():
@@ -44,8 +43,7 @@ def overpass2shp():
             pyproj.Proj(init='epsg:{}'.format(gv.epsg), preserve_units=True)
         )
 
-    osm_shp_path = join(SHP_DIR, 'osm_foot.shp')
-    with fiona.open(osm_shp_path, 'w', **metadata) as osm_shp:
+    with fiona.open(OSM_PED_SHP, 'w', **metadata) as osm_shp:
         for feat in features:
             fields = feat['properties']
             write_fields = {k: None for k in gv.attribute_keys}
