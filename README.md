@@ -61,8 +61,11 @@ Variants of the latter three groups also exist, whose names end with ‘not in M
 #### MAX Zone (column):
 MAX zones are derived from collections of consecutive stops that are within regions that have similar characteristics such as population density, walkability, etc.  The map below displays the division of stops into MAX zones.  
 
+![max stop zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/static_maps/max_zones_by_stop.png)
+
 If a tax lot meets the construction date criteria for and is within walking distance of two or more stops that are in different MAX zones, then the value of that tax lot is included in the tabulation for both zones, but double counting is eliminated in the 'All Zones' rows.  For this reason adding up each of the MAX zones for 'Properties in MAX walk shed' will give you a different and larger number than what is in 'All Zones'.  
 
+![tax lot zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/static_maps/comp_zones_half_mile_tm_dist.png)
 
 
 Parcels summed in rows with a 'Group' of 'Properties in MAX walk shed' are tax lots that are within 'Property Value' is the market value of these tax lots (land and building value) derived from the most current version (at the time that this analysis was conducted) of RLIS tax lots dataset.  
@@ -78,9 +81,6 @@ Multifamily housing units are collections of tax lots that comprise apartment co
 * [OpenStreetMap](osm.org) (street and trail network)
 * [Oregon Metro's RLIS](http://rlisdiscovery.oregonmetro.gov/) (tax lots, multifamily housing inventory, Outdoor Recreation and Conservation Areas, Urban Growth Boundary, city limits) 
 * [TriMet GIS](http://developer.trimet.org/gis/) (rail stations, TriMet Service District boundary)
-
-
-for a detailed account of the workflow used to derive these numbers see the README.md document here: https://github.com/grant-humphries/dev-near-light-rail
 
 
 Note: See sheet one in this book for source information and an explanation of the statistics.  Numbers here were derived and are presented in exactly the same way as sheet one with a single key difference.  The comparison groups (TriMet District, UGB, Nine Biggest Cities) on sheet one include all tax lots (and multi-family housing units) inside the boundary that defines the region, here tax lots that are within walking distance of MAX (and thus comprise the 'Properties in MAX walk shed statistics) are excluded from the comparison groups.
