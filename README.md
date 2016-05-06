@@ -1,111 +1,55 @@
-***README is currently under construction and fully not up-to-date***
-
 ## Overview
-This project is comprised of scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using `ArcGIS Network Analyst` and the network on which that tool executes routing is derived from `OpenStreetMap`.  The remaining data transformation and geoprocessing which fetches current light rail stops, determines the tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figures for the comparison areas, is done with open source tools that include the python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
+This project is comprised of scripts that automate the process of finding tax lots within network walking distance of light rail stops, determining the value of development that has occurred on those properties since the creation of the stop's light rail lines became public knowledge, and comparing that growth to other areas in the Portland metro region.  The initial piece of this analysis is to create isochrones: polygons that define the areas that can reach their corresponding stop by traveling the supplied distance (one half mile by default) or less.  The isochrones are created using ArcGIS `Network Analyst` and the network on which that tool executes routing is derived from [OpenStreetMap](osm.org).  The remaining data transformation and geoprocessing which fetches current light rail stops, determines tax lots that fall within the isochrones, filters out ineligible tax lots, and the tabulates figures for the comparison areas, is done with open source tools that include python packages `fiona`, `pyproj`, `shapely`, and `sqlalchemy` and sql scripts that utilize `PostGIS`.  The repo also contains a web map built with OpenLayers3 and Geoserver that visualizes the properties that fall into the varies categores defined by the analysis.
 
-## Project Workflow
-Follow the steps below to refresh the data and generate a current version of the statistics and supporting spatial data.
-
-#### Development Environment
+## Development Environment
 The following languages/applications must be installed to execute the scripts in this repo:
 * Python 2.7.x
 * PostgreSQL with PostGIS 2.0+
 * Bash 3.0+
 
-The first two items are fairly easy to install on all major platforms (a google search including the name of your operating system should get you what you need).  Bash is installed by default on Linux and Mac, and I recommend using [MinGW](http://www.mingw.org/) to get this functionality on Windows.
+Because the creation of the isochrones relies on ArcGIS this project must be carried out on a Windows machine.  The first two requirements are fairly easy to install on this operating system and I recommend getting [MinGW & MSYS](http://www.mingw.org/) to acquire a Bash-based shell.
 
-##### python package management
-Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( `fiona`, `gdal`, `pyproj`, `shapely`) and will not install with buildout on Windows (nor potentially on Mac or Linux).  To install these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/).  Alternately the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html) is available on all major platforms and can be used to install these as well.  Finally, `arcpy` is a requirement of the script that generates the isochrones.  To get this package you need an ArcGIS Desktop license and the code also draws on the Network Analyst extension.
+#### python package management
+Python package dependencies are retrieved via `buildout`, however some of the GIS packages rely on C libraries ( fiona, `gdal`, pyproj, shapely) and will not compile properly and install with buildout on Windows.  To get these on Windows used the precompiled binaries found [here](http://www.lfd.uci.edu/~gohlke/pythonlibs/) or the package manager [`conda`](http://conda.pydata.org/docs/install/quick.html).  Last, `arcpy` is a requirement of the script that generates the isochrones.  To get this package one mut have ArcGIS Desktop license as well as access to a Network Analyst extension.
 
-With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` to create project specific instance of python that includes buildout then run `./bin/buildout` to fetch the remaining python packages.
+With the above dependencies in place the rest of the python packages will be taken care of with buildout.  Simply run `python bootstrap-buildout.py` (using a version of python that has the packages named in the paragraph above) to create project specific buildout.  The script creates several directories, one of which is `bin` and contains the buildout executable.  Launch buildout to create a project instance of python that will have all of the required packages as well as console scripts, all of which will be created in `bin`.  Alternatively, if you already have `zc.buildout` installed on the python instance that you're using, just enter the command `buildout` from the project's home directory to create a project python and the scripts.
 
-#### Update MAX Stop Data
-buildout has generated an executable that will fetch the appropriate stops for this analysis, to execute it enter the following from the home directory: 
+## Script Execution
+The entirety of this process can be carried out by launching a single shell script which in turn executes a series constituent console and shell scripts.  The parent script is called `master.sh` and is stored in the `sh` directory.  For details on what each of the child scripts do and how they can be executed individually see the sections below.
+
+
+#### update MAX stop data
+The `get_max_stops` script in the `bin` directory uses sqlalchemy and TriMet's `TRANS` sqlalchemy model to fetch existing max stops.  It then uses fiona and shapely to write that data to a shapefile.  Database parameters can be passed to the script with flags, and use the `--help` flag to see available options.  An example of a call to this script from within `bin` looks like this:
+
 ```sh
-./bin/get_permanent_max_stops -d 'dbname' -u 'username' -p 'password'
+get_permanent_max_stops -p 'oracle_password'
 ```  
-To see the options available for the script use: `./bin/get_permanent_max_stops --help`
 
-#### Get Routable Street and Trail Shapefile via OpenStreetMap
-A script has also been created that carries out this task.  To deploy enter:
-```sh
-./bin/osm2routable_shp
-```  
-See options by appending the  `--help` parameter.
+#### fetch OpenStreetMap streets and trails and write them to shapefile
+To carry out this task execute `osm_hwys_to_shp` which is located in `bin`.  This script uses the `overpass` module to fetch OpenStreetMap streets and trails and converts and writes them to shapefile with fiona and shapely.  The type of ways that are retrived from OSM as well as the bounding box used is configurable, see details on rgeoptions by appending the  `--help` parameter to the script call.
 
-#### Create Network Dataset with ArcGIS's Network Analyst
-As of April 2016 this phase of the project can't be automated with arcpy (only with `ArcObjects`), see [this post](http://gis.stackexchange.com/questions/59971/how-to-create-network-dataset-for-network-assistant-using-arcpy) for more details.  Thus this task must be carried out within ArcGIS Desktop using the folllowing steps:
+#### create network dataset with ArcGIS Network Analyst
+This console script is named `create_network` and again is in `bin`.  The code here uses takes the OSM shapeifle from the previous step use the `comtypes` module and `ArcObjects` COM objects to create the Network Dataset.  This, more complicated approach is taken because a Network Dataset can't be created via `arcpy` (as of 5/2016).
 
-* Open ArcMap and make sure that the Network Analyst Extension is enabled (accessible under 'Customize' --> 'Extensions')
-* In the ArcCatalog window right-click the OpenStreetMap shapefile created in the last step (relative to this repo the shapefile will be at  `../data/year_mon/shp/osm_foot.shp` where the year/month folder is the date of the latest tax lot data) and select 'New Network Dataset', this will launch a wizard that configures the network dataset
-* Use the default name for the file
-* Keep default of modeling turns
-* Click 'Connectivity' and change 'Connectivity Policy' from 'End Point' to 'Any Vertex', **this step is critcial as routing will not function properly without it.**
-* Leave elevation modeling as 'None'
-* Delete the default network attribute 'Oneway' with the 'Remove All' button
-* Click 'Add...' button to create a new network attribute
-* On the 'Add New Attribute' dialog enter the following, then click 'OK' (**the 'Name' value below must be the exact string defined here or the python script that generates the isochrones won't be able to find this attribute**):
-    * `Name`: 'foot_permissions'
-    * `Usage Type`: Restriction
-    * `Restriction Usage`: Prohibited
-    * `Use by Default`: True (checked)
-* Click the 'Evaluators...' button
-* In the 'From-To' row under the 'Type' column select 'Field', then click the 'Evaluator Properties' button on the right-hand side of the dialog
-* In the 'Field Evaluators' window set the 'Parser' to 'Python' and enter the following code:
-    * Pre-Logic Script Code:
-    ```py
-    def foot_permissions(foot, access, highway, indoor):
-        if foot in ('yes', 'designated', 'permissive'):
-            return False
-        elif access == 'no' or \
-                highway in ('trunk', 'motorway', 'construction') or \
-                foot == 'no' or indoor == 'yes':
-            return True
-        else:
-            return False
-    ```
-    * Value =
-    ```
-    foot_permissions(!foot!, !access!, !highway!, !indoor!)
-    ```
-* Repeat the previous two steps of for the 'To-From' row in the 'Evaluators' dialog
-* Optionally create a second Network Attribute that tabulates walk minutes using the inputs below (use the snippet below for the field in both the 'From-To' and 'To-From' directions). This attribute returns walking times assuming that the pedestrian is traveling at 3 mph:
-    * `Name`: 'walk_minutes'
-    * `Type`: Cost
-    * `Units`: Minutes
-    * `Data Type`: Double
-    * `Use by Default`: False (unchecked)
-    * `Parser`: Python
-    * Pre-Logic Script Code:
-    ```py
-    def walk_minutes(length):
-        walk_time = length / (5280 * (3 / float(60)))
-        return walk_time
-    ```
-    * Value =
-    ```
-    walk_minutes(!Shape!)
-    ```
-* With the network attribute(s) added click 'Next' and 'Next' again on the following screen that relates to 'Travel Mode'
-* Select 'No' for the establishment of driving directions
-* Review summary to ensure that all settings are correct then click 'Finish'
-* Select 'Yes' when prompted to proceed with building the Network Dataset
+Once the Network Dataset has finished building, load it into ArcMap and use the inspect tool to ensure that the proper restrictions are in place.  For instance, routing should be marked as prohibited on freeways and where else that OpenStreetMap tags prohibit pedestrians.
 
-Once the Network Dataset has finished building (which takes a few minutes), plan a couple of test trips using the Network Analyst Toolbar (more details on how to do this [here](http://desktop.arcgis.com/en/arcmap/latest/extensions/network-analyst/route.htm)) to make sure that routing is working properly.  In particular ensure that walking restrictions are being applied to freeways, etc.
+#### create isochrones
+The script `create_isochrones` located in `bin` creates walk shed polygons (aka isochrones) that encapsulate the areas that can reach a given MAX stop by walking a supplied maximum distance (0.5 miles by default) or less when traveling along the existing street and trail network.  ArcGIS Network Analyst use's the network dataset from the last step to create these.  Use the `-d` parameter to set the walk distance in feet if you wish to deviate from the default of 2640.
 
-#### Create Isochrones
+Once the isochrones shapefile has been created bring it into a desktop GIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network to check for errors there.
 
-This step creates walk shed polygons (a.k.a. isochrones) that encapsulate the areas that can reach a given MAX stop by walking a supplied maximum distance (one half mile by default) or less when traveling along the existing street and trail network.
+#### geoprocess property data with PostGIS and generate final stats
+This final script called `get_stats_via_postgis.sh` is found in the `sh` directory.  The tasks that it carries out begin with loading all of the shapefiles that have been created (and other RLIS shp's) into to PostGIS.  From here the tax lot dataset is processed such that properties that are at least 80% covered by parks, natural areas, cemeteries or golf courses are removed from consideration for inclusion in the total value of development. Tax lots that are in the right-of-way or under water are also extracted.  Next, additional information about the development year of properties, that has been acquired from regional agencies, is added.  Last, using the isochrones, properties that were built since the decision to build nearby MAX stations are selected and stats are generated that compare growth in those areas to other urbanized regions in the Portland metropolitan area.
 
-* Use the `d` parameter to set the walk distance in feet if you wish to deviate from the default of 2640
-3. Run `./bin/create_isochrones` The script executed in a little under 10 minutes as of 02/2014.
-4. Once the isochrones shapefile has been created bring it into a desktop GIS and sort the features by the area (ascending).  Examine the polygons with the smallest areas and if any of them appear to be suspiciously undersized then compare them to the OSM street and trail network to check for errors there.
+After this script has completed, to validate the results, examine the tax lot and multi-family housing spatial tables in a desktop GIS to ensure that the geoprocessing has been executed correctly.
 
-#### Geoprocess Property Data and Generate Final Stats
 
-Here the tax lot dataset is processed such that properties that are at least 80% covered by parks, natural areas, cemeteries or golf courses are removed from consideration for inclusion in the total value of development.  This step is not executed for the multifamily layer as it is implicit that they aren't covered by these landuses.  Then using the isochrones, properties that were built since the decision to build nearby MAX stations are selected and stats are generated that compare growth in those areas to other urbanized regions in the Portland metropolitan area.
+## Metadata for Statistics
+The final output of the master script is a csv containing statistics, that is then manually converted to xlsx, formatted and annotated.  The following are clarifications of the meaning some of the more ambiguous terms used with that document:
 
-1. Run the batch file stored here `bin/geoprocess_properties.bat`.  Because there are roughly 600,000 complex polygons in the taxlot shapefile the postgis geoprocessing that this batch file launches is somewhat time consuming (it seems to be taking somewhere between 30 minutes and an hour at this point, but its difficult determine when debugging due to postgresql's cache).
-2. After the script completes it's a good idea to examine the taxlot and multi-family housing outputs in qgis to ensure that the steps have been executed as expected.
-3. When confident in the resultant data use excel or openoffice to save the output csv's (written here: `G:/PUBLIC/GIS_Projects/Development_Around_Lightrail/data/YYYY_MM/csv`) to .xlsx format them for presentation.
-4. Add metadata and any needed explanation of the statistics to the spreadsheets.
+* `minus max` 
+With the excel workbooks there are two sheets that contain variants of the statistics: one label "w/ near max
+* `(not in) max walk shed`
+* `max zones`
+
+
