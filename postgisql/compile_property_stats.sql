@@ -202,7 +202,7 @@ create table final_stats as
     select
         group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
         round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as total_val_per_acre,
+        round(totalval / gis_acres) as totalval_per_acre,
         round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
     where group_desc not like '%not in MAX walk shed%'
@@ -215,7 +215,7 @@ create table final_stats_minus_max as
     select
         group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
         round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as total_val_per_acre,
+        round(totalval / gis_acres) as totalval_per_acre,
         round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
     where group_desc like '%not in MAX walk shed%'
