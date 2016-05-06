@@ -9,7 +9,7 @@ setup(
     entry_points={
         'console_scripts': [
             'get_max_stops = lightraildev.get_permanent_max_stops:main',
-            'osm2routable_shp = lightraildev.osm2routable_shp:main',
+            'osm_hwy_to_shp = lightraildev.osm_hwy_to_shp:main',
             'create_network = lightraildev.create_network_dataset:main',
             'create_isochrones = lightraildev.create_isochrones:main'
         ]

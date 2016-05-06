@@ -128,8 +128,8 @@ def main():
     """"""
 
     start_time = datetime.now().strftime('%I:%M %p')
-    print 'Fetching OSM data and converting to shapefile, start time is: ' \
-          '{}, run time is: ~3.5 minutes...'.format(start_time)
+    print '2) Fetching OSM data and converting to shapefile, start time ' \
+          'is: {}, run time is: ~3.5 minutes...\n'.format(start_time)
 
     global gv
     args = sys.argv[1:]

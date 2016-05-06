@@ -287,8 +287,8 @@ def main():
     opts = process_options(args)
 
     start_time = datetime.now().strftime('%I:%M %p')
-    print 'Creating isochrones with walk distance of {0} feet, start time ' \
-          'is: {1}, run time is: ~1.25 minutes...'.format(
+    print '4) Creating isochrones with walk distance of {0} feet, start ' \
+          'time is: {1}, run time is: ~1.25 minutes...\n'.format(
                opts.walk_distance, start_time)
 
     # configure arcpy settings

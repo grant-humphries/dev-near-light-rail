@@ -177,8 +177,8 @@ def main():
     """"""
 
     # As of 4/2016 there are 166 permanent MAX stops
-    print 'Fetching "permanent" MAX stops from the TRANS schema and writing' \
-          'them to shapefile, this takes ~30 seconds'
+    print '1) Fetching "permanent" MAX stops from the TRANS schema and ' \
+          'writing them to shapefile, this takes ~30 seconds...\n'
 
     global gv
     args = sys.argv[1:]

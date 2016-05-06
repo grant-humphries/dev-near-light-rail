@@ -5,10 +5,10 @@
 
 import shutil
 from datetime import datetime
-from os.path import basename, dirname, join
+from os.path import basename, dirname, exists, join
 
-from arcpy import env, CheckExtension, CheckInExtension, CheckOutExtension, \
-    Describe, GetInstallInfo, SpatialReference
+from arcpy import env, CheckInExtension, Describe, GetInstallInfo, \
+    SpatialReference
 from arcpy.conversion import FeatureClassToFeatureClass
 from arcpy.management import CreateFeatureDataset, CreateFileGDB, \
     DefineProjection
@@ -127,7 +127,7 @@ def create_standalone_network_dataset():
 def create_gdb_for_network(keep_existing=False):
     """"""
 
-    if not keep_existing:
+    if not keep_existing and exists(OSM_PED_GDB):
         shutil.rmtree(OSM_PED_GDB)
 
     gdb_dir = dirname(OSM_PED_GDB)
@@ -336,8 +336,8 @@ def main():
     """"""
 
     start_time = datetime.now().strftime('%I:%M %p')
-    print 'Creating network dataset from osm shapefile, start time ' \
-          'is: {1}, run time is: ~4 minutes...'.format(start_time)
+    print '3) Creating network dataset from osm shapefile, start time ' \
+          'is: {}, run time is: ~4 minutes...\n'.format(start_time)
 
     env.overwriteOutput = True
     checkout_arcgis_extension('Network')

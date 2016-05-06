@@ -42,9 +42,9 @@ fi
 
 
 create_postgis_db() {
-    echo '1) Creating database...'
+    echo $'\na) Creating database...'
 
-    dropdb -h "${HOST}" -U "${USER}" --if-exists -i "${DBNAME}"
+    dropdb -h "${HOST}" -U "${USER}" --if-exists "${DBNAME}"
     createdb -h "${HOST}" -U "${USER}" "${DBNAME}"
 
     q="CREATE EXTENSION postgis;"
@@ -52,7 +52,7 @@ create_postgis_db() {
 }
 
 load_shapefiles() {
-    echo $'\n2) Loading shapefiles into Postgres, start time is:'
+    echo $'\nb) Loading shapefiles into Postgres, start time is:'
     echo "$( date +%r ), execution time is: ~6 minutes..."
 
     # espg code of oregon state plane north projection
@@ -82,7 +82,7 @@ load_shapefiles() {
 }
 
 filter_taxlots() {
-    echo $'\n3) removing natural areas, ROW and parcels outside of the study'
+    echo $'\nc) removing natural areas, ROW and parcels outside of the study'
     echo "area from tax lots, start time is: $( date +%r ), execution time"
     echo 'is: ~3 minutes...'
 
@@ -96,8 +96,8 @@ filter_taxlots() {
 supplement_year_built() {
     # Some additional year built data was provided by Washington county
     # for tax lots that have no data for that attribute in rlis
-    echo $'\n4) Updating year built values for tax lots with supplementary'
-    echo 'data from Washington County...'
+    echo $'\nd) Updating year built values for tax lots with supplementary'
+    echo $'data from Washington County...'
 
     id_col='ms_imp_seg'
     yr_col='yr_built'
@@ -130,7 +130,7 @@ supplement_year_built() {
 }
 
 get_property_proximity() {
-    echo $'\n5) Determining spatial relationships between properties and max'
+    echo $'\ne) Determining spatial relationships between properties and max'
     echo 'stops, ugb, trimet district and cities.  Start time is: '
     echo "$( date +%r ), execution time is: ~5 minutes..."
 
@@ -141,7 +141,7 @@ get_property_proximity() {
 }
 
 generate_stats() {
-    echo $'\n6) Compiling final stats...'
+    echo $'\nf) Compiling final stats...'
 
     stats_sql="${POSTGIS_DIR}/compile_property_stats.sql"
     psql -h "${HOST}" -d "${DBNAME}" -U "${USER}" \
@@ -149,7 +149,7 @@ generate_stats() {
 }
 
 export_to_csv() {
-    echo $'\n7) Exporting stats to csv...'
+    echo $'\ng) Exporting stats to csv...'
 
     mkdir -p "${CSV_DIR}"
 
@@ -161,6 +161,8 @@ export_to_csv() {
 }
 
 main() {
+    echo $'5) Beginning PostGIS loading and processing...\n'
+
     create_postgis_db
     load_shapefiles
     filter_taxlots

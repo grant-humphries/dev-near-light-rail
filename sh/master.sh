@@ -6,10 +6,10 @@ set -e
 CODE_DIR=$( cd $(dirname "${0}"); dirname $(pwd -W) )
 
 GET_MAX_STOPS="${CODE_DIR}/bin/get_max_stops"
-GET_OSM_SHP="${CODE_DIR}/bin/osm2routable_shp"
+GET_OSM_SHP="${CODE_DIR}/bin/osm_hwy_to_shp"
 CREATE_NETWORK="${CODE_DIR}/bin/create_network"
 CREATE_ISOCHRONES="${CODE_DIR}/bin/create_isochrones"
-GET_PROPERTY_STATS="${CODE_DIR}/sh/get_property_stats_via_postgis.sh"
+GET_STATS="${CODE_DIR}/sh/get_stats_via_postgis.sh"
 
 process_options() {
     while getopts "ho:p:" OPTION; do
@@ -50,7 +50,7 @@ main() {
     "${GET_OSM_SHP}"
     "${CREATE_NETWORK}"
     "${CREATE_ISOCHRONES}"
-    "${GET_PROPERTY_STATS}"
+    "${GET_STATS}"
 }
 
 process_options "$@"
