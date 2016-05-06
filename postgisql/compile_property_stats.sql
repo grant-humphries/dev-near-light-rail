@@ -131,35 +131,40 @@ begin
     end if;
 
     execute format(
-        'INSERT INTO property_stats '                                 ||
-        '    SELECT '                                                 ||
-        '        %1$L::text, '                                        ||
-        '        coalesce(string_agg( '                               ||
-        '            DISTINCT max_zone, '', ''), ''All Zones''), '    ||
-        '        array_to_string(array_agg( '                         ||
-        '            DISTINCT max_year '                              ||
-        '            ORDER by max_year), '', ''), '                   ||
-        '        string_agg(DISTINCT walk_dist::int::text, '', ''), ' ||
-        '        sum(totalval), '                                     ||
-        '        (SELECT sum(units) '                                 ||
-        '             FROM %2$I '                                     ||
-        '             WHERE yearbuilt >= max_year '                   ||
-        '                 AND %3$I IS TRUE '                          ||
-        '                 %4$s '                                      ||
-        '                 %5$s '                                      ||
-        '             GROUP BY %6$I), '                               ||
-        '        (SELECT SUM(gis_acres) '                             ||
-        '             FROM %7$I '                                     ||
-        '             WHERE %3$I IS TRUE '                            ||
-        '                 %4$s '                                      ||
-        '                 %5$s '                                      ||
-        '             GROUP BY %6$I), '                               ||
-        '        %8$s, '                                              ||
-        '        %9$s '                                               ||
-        '    FROM %7$I tx1 '                                          ||
-        '    WHERE yearbuilt >= max_year '                            ||
-        '        AND %3$I IS TRUE '                                   ||
-        '        %5$s '                                               ||
+        'INSERT INTO property_stats '                                     ||
+        '    SELECT '                                                     ||
+        '        %1$L::text, '                                            ||
+        '        coalesce(string_agg( '                                   ||
+        '            DISTINCT max_zone, '', ''), ''All Zones''), '        ||
+        '        array_to_string(array_agg( '                             ||
+        '            DISTINCT max_year '                                  ||
+        '            ORDER by max_year), '', ''), '                       ||
+        '        CASE '                                                   ||
+        '            WHEN -1 = ANY(array_agg(coalesce(walk_dist, -1))) '  ||
+        '                THEN NULL '                                      ||
+        '            ELSE string_agg( '                                   ||
+        '                DISTINCT walk_dist::int::text, '', '') '         ||
+        '        END, '                                                   ||
+        '        sum(totalval), '                                         ||
+        '        (SELECT sum(units) '                                     ||
+        '             FROM %2$I '                                         ||
+        '             WHERE yearbuilt >= max_year '                       ||
+        '                 AND %3$I IS TRUE '                              ||
+        '                 %4$s '                                          ||
+        '                 %5$s '                                          ||
+        '             GROUP BY %6$I), '                                   ||
+        '        (SELECT SUM(gis_acres) '                                 ||
+        '             FROM %7$I '                                         ||
+        '             WHERE %3$I IS TRUE '                                ||
+        '                 %4$s '                                          ||
+        '                 %5$s '                                          ||
+        '             GROUP BY %6$I), '                                   ||
+        '        %8$s, '                                                  ||
+        '        %9$s '                                                   ||
+        '    FROM %7$I tx1 '                                              ||
+        '    WHERE yearbuilt >= max_year '                                ||
+        '        AND %3$I IS TRUE '                                       ||
+        '        %5$s '                                                   ||
         '    GROUP BY %6$I;',
         desc_str, multifam_table, region, zone_clause, not_near_clause,
         grouping_field, taxlot_table, group_rank, zone_rank);

@@ -46,6 +46,9 @@ EOF
 }
 
 main() {
+    echo 'Beginning development around light rail computation, start time'
+    echo "is: $( date +%r ), run time is a little under 25 minutes" $'\n'
+
     "${GET_MAX_STOPS}" -p "${ORAPASSWORD}"
     "${GET_OSM_SHP}"
     "${CREATE_NETWORK}"

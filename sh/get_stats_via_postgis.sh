@@ -172,6 +172,5 @@ main() {
     export_to_csv
 }
 
-# ran in about 14.5 minutes on 4/15/16,
-# this used to take several hours!
+# ran in about 14.5 minutes on 4/15/16
 main

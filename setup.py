@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='lightraildev',
-    version='0.2.0',
+    version='0.3.0',
     author='Grant Humphries',
     dependency_links=['http://dev.trimet.org/pypi/dist/'],
     description='',
