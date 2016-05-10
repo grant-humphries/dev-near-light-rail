@@ -43,8 +43,4 @@ This final script called `get_stats_via_postgis.sh` is found in the `sh` directo
 
 After this script has completed, to validate the results, examine the tax lot and multi-family housing spatial tables in a desktop GIS to ensure that the geoprocessing has been executed correctly.
 
-
-For metadata that describes the stats that have been generated see [METADATA.md]().
-
-#### placeholder
-The final output of the master script is a csv containing statistics, that is then manually converted to xlsx, formatted and annotated.
+The final output of the master script is a csv containing statistics, that is then manually converted to excel workbook, formatted and annotated.  For metadata that describes the stats see [METADATA.md](https://github.com/grant-humphries/dev-near-light-rail/blob/master/METADATA.md).
