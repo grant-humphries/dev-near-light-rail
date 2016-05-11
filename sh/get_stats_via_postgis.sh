@@ -23,9 +23,9 @@ TAXLOTS="${RLIS_DIR}/TAXLOTS/taxlots.shp"
 TM_DISTRICT="${TRIMET_DIR}/tm_fill.shp"
 UGB="${RLIS_DIR}/BOUNDARY/ugb.shp"
 
-DATA_DIR="${PROJECT_DIR}/data/$( date -r ${TAXLOTS} +%Y_%m )"
-CSV_DIR="${DATA_DIR}/csv"
-SHP_DIR="${DATA_DIR}/shp"
+DATE_DIR="${PROJECT_DIR}/data/$( date -r ${TAXLOTS} +%Y_%m )"
+CSV_DIR="${DATE_DIR}/csv"
+SHP_DIR="${DATE_DIR}/shp"
 
 ISOCHRONES="${SHP_DIR}/isochrones.shp"
 MAX_STOPS="${SHP_DIR}/max_stops.shp"
@@ -172,5 +172,5 @@ main() {
     export_to_csv
 }
 
-# ran in about 14.5 minutes on 4/15/16
+# ran in ~14.5 minutes on 4/15/16
 main

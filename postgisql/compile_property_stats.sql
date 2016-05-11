@@ -123,7 +123,7 @@ begin
     --the 'includes_max' parameter indicates whether the properties
     --within walking distance of max stops are to be included
     if includes_max is false then
-        desc_str := desc_str || ', not in MAX walk shed';
+        desc_str := desc_str || ' (not in walk shed)';
         not_near_clause := 'AND near_max IS FALSE';
     elsif includes_max != true then
         raise exception 'invalid input for ''includes_max'' parameter'
@@ -205,7 +205,7 @@ create table final_stats as
         round(totalval / gis_acres) as totalval_per_acre,
         round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
-    where group_desc not like '%not in MAX walk shed%'
+    where group_desc not like '%(not in walk shed)%'
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
 alter table final_stats add primary key (group_desc, max_zone);
@@ -218,7 +218,7 @@ create table final_stats_minus_max as
         round(totalval / gis_acres) as totalval_per_acre,
         round(housing_units / gis_acres, 2) as units_per_acre
     from property_stats
-    where group_desc like '%not in MAX walk shed%'
+    where group_desc like '%(not in walk shed)%'
         or group_desc = 'Properties in MAX walk shed'
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
 
