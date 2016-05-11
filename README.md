@@ -17,7 +17,9 @@ With the above dependencies in place the rest of the python packages will be tak
 ## Script Execution
 The entirety of this process can be carried out by launching a single shell script which in turn executes a series constituent console and shell scripts.  The parent script is called `master.sh` and is stored in the `sh` directory.  For this script to run uninterrupted password's for oracle and postgres databased that are used in this process must be passed in as shown below.  Otherwise the user will be prompted to enter this information.
 
-`master.sh -o 'oracle_password -p 'postgres_password'`
+```sh
+master.sh -o 'oracle_password -p 'postgres_password'
+```
 
 For details on what each of the child scripts do and how they can be executed individually see the sections below.
 
