@@ -201,9 +201,8 @@ drop table if exists final_stats cascade;
 create table final_stats as
     select
         group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-        round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as totalval_per_acre,
-        round(housing_units / gis_acres, 2) as units_per_acre
+        gis_acres, (totalval / gis_acres) as totalval_per_acre,
+        (housing_units / gis_acres) as units_per_acre
     from property_stats
     where group_desc not like '%(not in walk shed)%'
     order by zone_rank desc, max_zone, group_rank desc, group_desc;
@@ -214,9 +213,8 @@ drop table if exists final_stats_minus_max cascade;
 create table final_stats_minus_max as
     select
         group_desc, max_zone, max_year, walk_dist, totalval, housing_units,
-        round(gis_acres, 2) as gis_acres,
-        round(totalval / gis_acres) as totalval_per_acre,
-        round(housing_units / gis_acres, 2) as units_per_acre
+        gis_acres, (totalval / gis_acres) as totalval_per_acre,
+        (housing_units / gis_acres) as units_per_acre
     from property_stats
     where group_desc like '%(not in walk shed)%'
         or group_desc = 'Properties in MAX walk shed'
