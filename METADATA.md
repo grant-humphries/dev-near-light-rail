@@ -1,4 +1,4 @@
-## Metadata for Development Statistics
+## Metadata for Real Estate Development Statistics
 The following are explanations of the terms used within the statistics that describes real estate development around light rail (MAX) lines, as well as details on the data sources that were used as inputs in the analysis:
 
 #### Group (column):

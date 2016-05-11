@@ -130,6 +130,8 @@ def autofit_column_width():
 def main():
     """"""
 
+    print "\n6) Converting stats csv's into a formatted excel workbook..."
+
     csv_to_xlsx()
     autofit_column_width()
 
