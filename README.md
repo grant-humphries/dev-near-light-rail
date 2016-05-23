@@ -18,7 +18,7 @@ With the above dependencies in place the rest of the python packages will be tak
 The entirety of this process can be carried out by launching a single shell script which in turn executes a series constituent console and shell scripts.  The parent script is called `master.sh` and is stored in the `sh` directory.  For this script to run uninterrupted password's for oracle and postgres databased that are used in this process must be passed in as shown below.  Otherwise the user will be prompted to enter this information.
 
 ```sh
-master.sh -o 'oracle_password -p 'postgres_password'
+master.sh -o 'oracle_password' -p 'postgres_password'
 ```
 
 For details on what each of the child scripts do and how they can be executed individually see the sections below.
@@ -49,4 +49,4 @@ This code is in the form a bash script called: `get_stats_via_postgis.sh` and is
 After this script has completed, to validate the results, examine the tax lot and multi-family housing spatial tables in a desktop GIS to ensure that the geoprocessing has been executed correctly.
 
 #### Convert csv's into a formatted Excel Workbook
-The script `convert_csv_to_excel` in `bin` takes the two tables exported from Postgres as csv and compiles them into single excel workbook.  It then applies appropriate formatting to the various data types as well as styling to improve appearance and readability.  The creation of this workbook is the culmination of all previous steps and metadata explaining the statistics it contains can be found here: [METADATA.md](https://github.com/grant-humphries/dev-near-light-rail/blob/master/METADATA.md). 
+The script `convert_csv_to_excel` in `bin` takes the two tables exported from Postgres as csv and compiles them into single excel workbook.  It then applies appropriate formatting to the various data types as well as styling to improve appearance and readability.  The creation of this workbook is the culmination of all previous steps and metadata explaining the statistics it contains can be found here: [METADATA.md](https://github.com/grant-humphries/dev-near-light-rail/blob/master/METADATA.md).
