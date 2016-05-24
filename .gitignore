@@ -1,8 +1,7 @@
 *.db
 *.pyc
 
-# pycharm/editor config
-.editorconfig
+# pycharm config
 .idea/
 
 # buildout files
