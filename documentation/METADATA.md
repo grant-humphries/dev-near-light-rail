@@ -11,11 +11,11 @@ To compare real estate development rates in areas near MAX stations to levels th
 #### MAX Zone (column):
 MAX zones are derived from collections of consecutive stops that are within regions that have similar characteristics such as population density and walkability.  The map below displays the division of stops into MAX zones:
 
-![max stop zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/static_maps/max_zones_by_stop.png)
+![max stop zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/documentation/png/max_zones_by_stop.png)
 
 If a tax lot meets the construction date criteria for and is within walking distance of two or more stops that are in different MAX zones, then the value of that tax lot is included in the tabulation for both zones, but there is no double counting in the 'All Zones' statistics.  For this reason adding up each of the MAX zones for walk shed properties will give you a different and larger number than what is in 'All Zones'.  Parcels that are only in the comparison groups are given the MAX zone of their closest stop.  The image below displays tax lots divided into these zones:
 
-![tax lot zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/static_maps/comp_zones_half_mile_tm_dist.png)
+![tax lot zone map](https://raw.githubusercontent.com/grant-humphries/dev-near-light-rail/master/documentation/png/comp_zones_half_mile_tm_dist.png)
 
 #### MAX Year (column)
 Decision to build year of stops within a 'MAX Zone'.  Properties must have been developed since the year of their nearby stops to be eligible to be counted in the market value and housing unit totals.
