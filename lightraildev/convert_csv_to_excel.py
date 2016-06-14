@@ -29,7 +29,7 @@ HEADER_MAP = {
 FOOTNOTE = 'click this text to view metadata and source information for ' \
            'these statistics'
 METADATA_URL = 'https://github.com/grant-humphries/dev-near-light-rail/' \
-               'blob/master/METADATA.md'
+               'blob/master/documentation/METADATA.md'
 
 
 def csv_to_xlsx():

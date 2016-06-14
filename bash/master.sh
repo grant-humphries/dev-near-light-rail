@@ -9,7 +9,7 @@ GET_MAX_STOPS="${CODE_DIR}/bin/get_max_stops"
 GET_OSM_SHP="${CODE_DIR}/bin/osm_hwy_to_shp"
 CREATE_NETWORK="${CODE_DIR}/bin/create_network"
 CREATE_ISOCHRONES="${CODE_DIR}/bin/create_isochrones"
-GET_STATS="${CODE_DIR}/sh/get_stats_via_postgis.sh"
+GET_STATS="${CODE_DIR}/bash/get_stats_via_postgis.sh"
 CSV_TO_EXCEL="${CODE_DIR}/bin/csv_to_excel"
 
 process_options() {
